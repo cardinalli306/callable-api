@@ -1,0 +1,155 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Uma API simples construída em Go usando Gin framework.",
+        "title": "Callable API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/v1/data": {
+            "get": {
+                "description": "Retorna uma lista de itens disponíveis",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Obtém lista de dados",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adiciona um novo item com base nos dados fornecidos",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Cria um novo item",
+                "parameters": [
+                    {
+                        "description": "Dados do item",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.InputData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/data/{id}": {
+            "get": {
+                "description": "Retorna um item específico com base no ID fornecido",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Obtém item por ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do item",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Retorna um status 200 se a API estiver rodando",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Verifica o status da API",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.InputData": {
+            "type": "object",
+            "required": [
+                "name",
+                "value"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-05-22T14:56:32Z"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Descrição detalhada do item"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "usuario@exemplo.com"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3,
+                    "example": "Nome do Item"
+                },
+                "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "123ABC"
+                }
+            }
+        },
+        "main.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
