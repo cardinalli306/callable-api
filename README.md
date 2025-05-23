@@ -39,14 +39,14 @@ Git (to clone the repository)
 Installation and Execution:
 
 1. Clone the repository
-git clone https://github.com/cardinalli306/callable-api.git
-cd callable-api
+"git clone https://github.com/cardinalli306/callable-api.git"
+"cd callable-api"
 
 2. Install the dependencies
-go mod download
+"go mod download"
 
 3. Run the application
-go run .
+"go run ."
 
 The API will be available at http://localhost:8080. Access the Swagger documentation at http://localhost:8080/swagger/index.html.
 
