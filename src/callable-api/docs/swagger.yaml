@@ -102,4 +102,10 @@ paths:
           schema:
             $ref: '#/definitions/main.Response'
       summary: Verifica o status da API
+securityDefinitions:
+  Bearer:
+    description: 'Insira seu token JWT no formato: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

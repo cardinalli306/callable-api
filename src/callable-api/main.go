@@ -20,6 +20,10 @@ import (
 // @description Uma API simples construída em Go usando Gin framework.
 // @host localhost:8080
 // @BasePath /
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Insira seu token JWT no formato: Bearer {token}
 
 func main() {
 	// Inicializa o router do Gin
