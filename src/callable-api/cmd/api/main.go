@@ -33,10 +33,8 @@ import (
 // @name Authorization
 // @description Insert your JWT token in the format: Bearer {token}
 
-func main() {
-	// Load configuration
-	cfg := config.Load()
-
+// SetupEnv configures the environment based on config
+func SetupEnv(cfg *config.Config) {
 	// Configure logger
 	logger.SetLevel(cfg.LogLevel)
 	logger.Info("Starting API", map[string]interface{}{
@@ -49,7 +47,10 @@ func main() {
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
+}
 
+// SetupRouter configures and returns the Gin router
+func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Initialize Gin router
 	router := gin.New()
 	router.Use(middleware.RequestLogger())
@@ -76,14 +77,21 @@ func main() {
 	// Route to access Swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Server configuration with timeout
-	server := &http.Server{
+	return router
+}
+
+// SetupServer configures and returns the HTTP server
+func SetupServer(cfg *config.Config, router *gin.Engine) *http.Server {
+	return &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.ReadTimeoutSecs) * time.Second,
 		WriteTimeout: time.Duration(cfg.WriteTimeoutSecs) * time.Second,
 	}
+}
 
+// StartServer starts the HTTP server and sets up graceful shutdown
+func StartServer(server *http.Server, cfg *config.Config) {
 	// Start server in a separate goroutine
 	go func() {
 		logger.Info("Server started", map[string]interface{}{
@@ -113,4 +121,21 @@ func main() {
 	}
 
 	logger.Info("Server exited gracefully", nil)
+}
+
+func main() {
+	// Load configuration
+	cfg := config.Load()
+
+	// Setup environment
+	SetupEnv(cfg)
+
+	// Setup router
+	router := SetupRouter(cfg)
+
+	// Setup server
+	server := SetupServer(cfg, router)
+
+	// Start server with graceful shutdown
+	StartServer(server, cfg)
 }

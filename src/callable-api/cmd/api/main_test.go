@@ -6,43 +6,68 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"callable-api/internal/handlers"
-	"callable-api/internal/middleware"
 	"callable-api/internal/models"
 	"callable-api/pkg/config"
 )
 
-// Helper function to set up the test router
-func setupTestRouter() *gin.Engine {
+func TestSetupRouter(t *testing.T) {
+	// Use test mode
 	gin.SetMode(gin.TestMode)
-	router := gin.Default()
 
-	router.GET("/health", handlers.HealthCheck)
+	// Load config
+	cfg := config.Load()
 
-	v1 := router.Group("/api/v1")
-	{
-		v1.GET("/data", handlers.GetData)
-		v1.GET("/data/:id", handlers.GetDataById)
+	// Test the router setup function
+	router := SetupRouter(cfg)
+	assert.NotNil(t, router)
 
-		auth := v1.Group("/")
-		
-		// Load configuration for token
-		cfg := config.Load()
-		auth.Use(middleware.TokenAuthMiddleware(cfg.DemoApiToken))
-		{
-			auth.POST("/data", handlers.PostData)
-		}
+	// Test health endpoint
+	req, _ := http.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+}
+
+func TestSetupEnv(t *testing.T) {
+	// Test debug mode
+	debugCfg := &config.Config{
+		LogLevel: "debug",
 	}
+	SetupEnv(debugCfg)
+	assert.Equal(t, gin.DebugMode, gin.Mode())
 
-	return router
+	// Test release mode
+	releaseCfg := &config.Config{
+		LogLevel: "info",
+	}
+	SetupEnv(releaseCfg)
+	assert.Equal(t, gin.ReleaseMode, gin.Mode())
+}
+
+func TestSetupServer(t *testing.T) {
+	cfg := &config.Config{
+		Port:           "8080",
+		ReadTimeoutSecs:  10,
+		WriteTimeoutSecs: 10,
+	}
+	router := gin.New()
+	server := SetupServer(cfg, router)
+
+	assert.Equal(t, ":8080", server.Addr)
+	assert.Equal(t, 10*time.Second, server.ReadTimeout)
+	assert.Equal(t, 10*time.Second, server.WriteTimeout)
 }
 
 func TestIntegrationHealthCheck(t *testing.T) {
-	router := setupTestRouter()
+	// Use the actual router setup from main.go
+	gin.SetMode(gin.TestMode)
+	cfg := config.Load()
+	router := SetupRouter(cfg)
 
 	// Test health check endpoint
 	req, _ := http.NewRequest(http.MethodGet, "/health", nil)
@@ -58,7 +83,10 @@ func TestIntegrationHealthCheck(t *testing.T) {
 }
 
 func TestIntegrationGetData(t *testing.T) {
-	router := setupTestRouter()
+	// Use the actual router setup from main.go
+	gin.SetMode(gin.TestMode)
+	cfg := config.Load()
+	router := SetupRouter(cfg)
 
 	// Test GET /api/v1/data endpoint
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/data", nil)
@@ -69,7 +97,10 @@ func TestIntegrationGetData(t *testing.T) {
 }
 
 func TestIntegrationGetDataById(t *testing.T) {
-	router := setupTestRouter()
+	// Use the actual router setup from main.go
+	gin.SetMode(gin.TestMode)
+	cfg := config.Load()
+	router := SetupRouter(cfg)
 
 	// Test GET /api/v1/data/:id endpoint
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/data/123", nil)
@@ -88,7 +119,10 @@ func TestIntegrationGetDataById(t *testing.T) {
 }
 
 func TestIntegrationPostDataWithAuth(t *testing.T) {
-	router := setupTestRouter()
+	// Use the actual router setup from main.go
+	gin.SetMode(gin.TestMode)
+	cfg := config.Load()
+	router := SetupRouter(cfg)
 
 	// Prepare data for POST
 	input := models.InputData{
@@ -104,7 +138,6 @@ func TestIntegrationPostDataWithAuth(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	
 	// Use the correct token from configuration
-	cfg := config.Load()
 	req.Header.Set("Authorization", "Bearer "+cfg.DemoApiToken)
 	
 	w := httptest.NewRecorder()
@@ -114,7 +147,10 @@ func TestIntegrationPostDataWithAuth(t *testing.T) {
 }
 
 func TestIntegrationPostDataWithoutAuth(t *testing.T) {
-	router := setupTestRouter()
+	// Use the actual router setup from main.go
+	gin.SetMode(gin.TestMode)
+	cfg := config.Load()
+	router := SetupRouter(cfg)
 
 	// Prepare data for POST
 	input := models.InputData{
