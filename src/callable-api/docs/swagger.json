@@ -1,9 +1,17 @@
 {
+    "schemes": [
+        "http",
+        "https"
+    ],
     "swagger": "2.0",
     "info": {
-        "description": "Uma API simples construída em Go usando Gin framework.",
+        "description": "Uma API robusta construída em Go usando o framework Gin, oferecendo endpoints para gerenciamento de dados com validação completa.",
         "title": "Callable API",
-        "contact": {},
+        "contact": {
+            "name": "Desenvolvedor",
+            "url": "https://exemplo.com",
+            "email": "dev@exemplo.com"
+        },
         "version": "1.0"
     },
     "host": "localhost:8080",
@@ -11,51 +19,142 @@
     "paths": {
         "/api/v1/data": {
             "get": {
-                "description": "Retorna uma lista de itens disponíveis",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a paginated list of available items",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Obtém lista de dados",
+                "tags": [
+                    "items"
+                ],
+                "summary": "Get data list",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Data retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Item"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
             },
             "post": {
-                "description": "Adiciona um novo item com base nos dados fornecidos",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Add a new item based on provided data",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Cria um novo item",
+                "tags": [
+                    "items"
+                ],
+                "summary": "Create new item",
                 "parameters": [
                     {
-                        "description": "Dados do item",
+                        "description": "Item data",
                         "name": "data",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.InputData"
+                            "$ref": "#/definitions/models.InputData"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Item created",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Item"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid input data",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -63,15 +162,24 @@
         },
         "/api/v1/data/{id}": {
             "get": {
-                "description": "Retorna um item específico com base no ID fornecido",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a specific item based on provided ID",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Obtém item por ID",
+                "tags": [
+                    "items"
+                ],
+                "summary": "Get item by ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID do item",
+                        "format": "uuid",
+                        "description": "Item ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -79,9 +187,45 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Item found",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Item"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID format",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Item not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -89,16 +233,19 @@
         },
         "/health": {
             "get": {
-                "description": "Retorna um status 200 se a API estiver rodando",
+                "description": "Returns a 200 status if the API is running",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Verifica o status da API",
+                "tags": [
+                    "health"
+                ],
+                "summary": "Check API status",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "API is running",
                         "schema": {
-                            "$ref": "#/definitions/main.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -106,7 +253,7 @@
         }
     },
     "definitions": {
-        "main.InputData": {
+        "models.InputData": {
             "type": "object",
             "required": [
                 "name",
@@ -120,17 +267,17 @@
                 "description": {
                     "type": "string",
                     "maxLength": 200,
-                    "example": "Descrição detalhada do item"
+                    "example": "Detailed item description"
                 },
                 "email": {
                     "type": "string",
-                    "example": "usuario@exemplo.com"
+                    "example": "user@example.com"
                 },
                 "name": {
                     "type": "string",
                     "maxLength": 50,
                     "minLength": 3,
-                    "example": "Nome do Item"
+                    "example": "Item Name"
                 },
                 "value": {
                     "type": "string",
@@ -139,22 +286,79 @@
                 }
             }
         },
-        "main.Response": {
+        "models.Item": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-05-22T14:56:32Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Detailed item description"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "5f8d0e6e-6c0a-4f0a-8e0a-6c0a4f0a8e0a"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Item Name"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "ABC123"
+                }
+            }
+        },
+        "models.ListResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Data retrieved successfully"
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 10
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "success"
+                },
+                "total_rows": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "models.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         }
     },
     "securityDefinitions": {
         "Bearer": {
-            "description": "Insira seu token JWT no formato: Bearer {token}",
+            "description": "Insert your JWT token in the format: Bearer {token}",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
