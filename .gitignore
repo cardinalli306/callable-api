@@ -34,3 +34,7 @@ go.work.sum
 bin/
 pkg/
 *.git
+bin/
+pkg/mod/
+
+
