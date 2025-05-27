@@ -17,24 +17,22 @@ coverage.*
 *.coverprofile
 profile.cov
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Dependency directories
+vendor/
 
 # Go workspace file
 go.work
 go.work.sum
 
-# env file
+# Environment files
 .env
+.env.local
 
 # Editor/IDE
-# .idea/
-# .vscode/
-# Ignorar binários e caches
-bin/
-pkg/
-*.git
-bin/
-pkg/mod/
+.idea/
+.vscode/
 
-
+# Go binaries and module cache
+/bin/
+/pkg/
+/pkg/mod/
