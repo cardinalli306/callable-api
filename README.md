@@ -427,3 +427,4 @@ Contributions are welcome\! Please feel free to submit a Pull Request.
 ## **License**
 
 This project is licensed under the MIT License \- see the [LICENSE](https://flow.ciandt.com/chat-with-docs/c/LICENSE) file for details.
+
