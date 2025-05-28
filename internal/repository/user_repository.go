@@ -10,6 +10,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	userNotFoundMessage = "Usuário não encontrado" // Definição da constante
+)
+
 // UserRepository define as operações do repositório de usuários
 type UserRepository interface {
 	FindByID(id string) (*models.User, error)
@@ -71,7 +75,7 @@ func (r *InMemoryUserRepository) FindByID(id string) (*models.User, error) {
 	if user, exists := r.users[id]; exists {
 		return user, nil
 	}
-	return nil, errors.NewNotFoundError("Usuário não encontrado", nil)
+	return nil, errors.NewNotFoundError(userNotFoundMessage, nil) // Usando a constante
 }
 
 // FindByEmail busca um usuário pelo email
@@ -84,7 +88,7 @@ func (r *InMemoryUserRepository) FindByEmail(email string) (*models.User, error)
 			return user, nil
 		}
 	}
-	return nil, errors.NewNotFoundError("Usuário não encontrado", nil)
+	return nil, errors.NewNotFoundError(userNotFoundMessage, nil) // Usando a constante
 }
 
 // Create cria um novo usuário
@@ -120,7 +124,7 @@ func (r *InMemoryUserRepository) Update(user *models.User) (*models.User, error)
 	defer r.mutex.Unlock()
 
 	if _, exists := r.users[user.ID]; !exists {
-		return nil, errors.NewNotFoundError("Usuário não encontrado", nil)
+		return nil, errors.NewNotFoundError(userNotFoundMessage, nil) // Usando a constante
 	}
 
 	// Verificar se o email está sendo alterado e se o novo email já está em uso
@@ -182,7 +186,7 @@ func (r *InMemoryUserRepository) Delete(id string) error {
 	defer r.mutex.Unlock()
 
 	if _, exists := r.users[id]; !exists {
-		return errors.NewNotFoundError("Usuário não encontrado", nil)
+		return errors.NewNotFoundError(userNotFoundMessage, nil) // Usando a constante
 	}
 
 	delete(r.users, id)
