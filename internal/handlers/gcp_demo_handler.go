@@ -55,8 +55,8 @@ func (h *GCPDemoHandler) TestIntegration(w http.ResponseWriter, r *http.Request)
 		"method":      r.Method,
 	})
 	response["tests"].(map[string]interface{})["logging"] = map[string]interface{}{
-		"status":              "success",
-		"message":             "Logs enviados com sucesso",
+		"status":                "success",
+		"message":               "Logs enviados com sucesso",
 		"cloud_logging_enabled": h.config.UseCloudLogging,
 	}
 
