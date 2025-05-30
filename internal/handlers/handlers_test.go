@@ -13,13 +13,15 @@ import (
 
     "callable-api/internal/handlers"
     "callable-api/internal/models"
-    "callable-api/internal/service"
 )
 
-// Mock do ItemService
+// Mock do ItemService implementando a interface ItemServiceInterface
 type MockItemService struct {
     mock.Mock
 }
+
+// Verificação de conformidade com a interface
+var _ handlers.ItemServiceInterface = (*MockItemService)(nil)
 
 func (m *MockItemService) GetItems(page, limit int) ([]models.Item, int, error) {
     args := m.Called(page, limit)
@@ -153,10 +155,10 @@ func TestGetDataById(t *testing.T) {
     assert.Equal(t, "success", response.Status)
     assert.Equal(t, "Data retrieved successfully", response.Message)
 
-    // Verificar se os dados retornados são corretos
-    data, ok := response.Data.(map[string]interface{})
+    // Modificado para testar a resposta correta conforme implementação
+    data, ok := response.Data.(*models.Item)
     assert.True(t, ok)
-    assert.Equal(t, "123", data["id"])
+    assert.Equal(t, "123", data.ID)
     
     // Verificar se o mock foi chamado corretamente
     mockService.AssertExpectations(t)

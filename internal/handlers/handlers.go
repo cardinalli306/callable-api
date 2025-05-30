@@ -1,4 +1,3 @@
-// internal/handlers/handlers.go
 package handlers
 
 import (
@@ -6,17 +5,23 @@ import (
 	"strconv"
 	"github.com/gin-gonic/gin"
 	"callable-api/internal/models"
-	"callable-api/internal/service"
 	"callable-api/pkg/errors"
-	)
+)
+
+// ItemServiceInterface define os métodos que o handler espera do serviço de itens
+type ItemServiceInterface interface {
+	GetItems(page, limit int) ([]models.Item, int, error)
+	GetItemByID(id string) (*models.Item, error)
+	CreateItem(input *models.InputData) (*models.Item, error)
+}
 
 // ItemHandler gerencia as requisições HTTP relacionadas a itens
 type ItemHandler struct {
-	itemService *service.ItemService
+	itemService ItemServiceInterface
 }
 
 // NewItemHandler cria uma nova instância de ItemHandler
-func NewItemHandler(itemService *service.ItemService) *ItemHandler {
+func NewItemHandler(itemService ItemServiceInterface) *ItemHandler {
 	return &ItemHandler{
 		itemService: itemService,
 	}
