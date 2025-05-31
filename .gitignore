@@ -34,5 +34,5 @@ go.work.sum
 
 # Go binaries and module cache
 /bin/
-/pkg/
+#/pkg/
 /pkg/mod/
