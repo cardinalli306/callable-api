@@ -5,38 +5,32 @@ import (
 	"strconv"
 	"github.com/gin-gonic/gin"
 	"callable-api/internal/models"
-	"callable-api/pkg/logger"
+	"callable-api/pkg/errors"
 )
 
-// HealthCheck godoc
-// @Summary Check API status
-// @Description Returns a 200 status if the API is running
-// @Tags health
-// @Produce json
-// @Success 200 {object} models.Response "API is running"
-// @Router /health [get]
-func HealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, models.Response{
-		Status:  "success",
-		Message: "API is running",
-	})
+// ItemServiceInterface define os métodos que o handler espera do serviço de itens
+type ItemServiceInterface interface {
+	GetItems(page, limit int) ([]models.Item, int, error)
+	GetItemByID(id string) (*models.Item, error)
+	CreateItem(input *models.InputData) (*models.Item, error)
 }
 
-// GetData godoc
-// @Summary Get data list
-// @Description Returns a paginated list of available items
-// @Tags items
-// @Produce json
-// @Security Bearer
-// @Param page query int false "Page number" default(1) minimum(1)
-// @Param limit query int false "Items per page" default(10) maximum(100)
-// @Success 200 {object} models.ListResponse{data=[]models.Item} "Data retrieved successfully"
-// @Failure 400 {object} models.Response "Invalid request"
-// @Failure 401 {object} models.Response "Unauthorized"
-// @Failure 500 {object} models.Response "Internal server error"
-// @Router /api/v1/data [get]
-func GetData(c *gin.Context) {
-	// Extract pagination parameters
+// ItemHandler gerencia as requisições HTTP relacionadas a itens
+type ItemHandler struct {
+	itemService ItemServiceInterface
+}
+
+// NewItemHandler cria uma nova instância de ItemHandler
+func NewItemHandler(itemService ItemServiceInterface) *ItemHandler {
+	return &ItemHandler{
+		itemService: itemService,
+	}
+}
+
+// GetData retorna uma lista paginada de itens
+// (Mantendo a assinatura original para compatibilidade com swagger)
+func (h *ItemHandler) GetData(c *gin.Context) {
+	// Parse query parameters for pagination
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 	
@@ -49,135 +43,70 @@ func GetData(c *gin.Context) {
 	if err != nil || limit < 1 || limit > 100 {
 		limit = 10
 	}
-
-	// Simulating response data with pagination
-	data := []models.Item{
-		{
-			ID: "1", 
-			Name: "Item 1", 
-			Value: "ABC123", 
-			Description: "Description for Item 1",
-			Email: "user1@example.com",
-			CreatedAt: "2023-05-22T14:56:32Z",
-		},
-		{
-			ID: "2", 
-			Name: "Item 2", 
-			Value: "XYZ456", 
-			Description: "Description for Item 2",
-			Email: "user2@example.com",
-			CreatedAt: "2023-05-23T10:15:45Z",
-		},
-	}
 	
-	totalItems := 42 // Simulating total count from database
-
-	logger.Info("Data retrieved successfully", map[string]interface{}{
-		"page": page,
-		"limit": limit,
-		"total": totalItems,
-	})
-
-	c.JSON(http.StatusOK, models.ListResponse{
-		Status:    "success",
-		Message:   "Data retrieved successfully",
-		Data:      data,
-		Page:      page,
-		PageSize:  limit,
-		TotalRows: totalItems,
-	})
-}
-
-// PostData godoc
-// @Summary Create new item
-// @Description Add a new item based on provided data
-// @Tags items
-// @Accept json
-// @Produce json
-// @Security Bearer
-// @Param data body models.InputData true "Item data"
-// @Success 201 {object} models.Response{data=models.Item} "Item created"
-// @Failure 400 {object} models.Response "Invalid input data"
-// @Failure 401 {object} models.Response "Unauthorized"
-// @Failure 500 {object} models.Response "Internal server error"
-// @Router /api/v1/data [post]
-func PostData(c *gin.Context) {
-	var input models.InputData
-	
-	// Request body validation
-	if err := c.ShouldBindJSON(&input); err != nil {
-		logger.Warn("Invalid input data", map[string]interface{}{
-			"error": err.Error(),
-		})
-		
-		c.JSON(http.StatusBadRequest, models.Response{
-			Status:  "error",
-			Message: "Invalid input: " + err.Error(),
-		})
+	items, total, err := h.itemService.GetItems(page, limit)
+	if err != nil {
+		errors.HandleErrors(c, err)
 		return
 	}
 	
-	// Create a simulated response item
-	newItem := models.Item{
-		ID:          "new-generated-id",
-		Name:        input.Name,
-		Value:       input.Value,
-		Description: input.Description,
-		Email:       input.Email,
-		CreatedAt:   input.CreatedAt,
-	}
-	
-	logger.Info("New item created", map[string]interface{}{
-		"name": input.Name,
-		"id":   newItem.ID,
-	})
-	
-	// Process received data and return the new item
-	c.JSON(http.StatusCreated, models.Response{
+	c.JSON(http.StatusOK, models.Response{
 		Status:  "success",
-		Message: "Data saved successfully",
-		Data:    newItem,
+		Message: "Data retrieved successfully",
+		Data: map[string]interface{}{
+			"items": items,
+			"meta": map[string]interface{}{
+				"page":  page,
+				"limit": limit,
+				"total": total,
+			},
+		},
 	})
 }
 
-// GetDataById godoc
-// @Summary Get item by ID
-// @Description Returns a specific item based on provided ID
-// @Tags items
-// @Produce json
-// @Security Bearer
-// @Param id path string true "Item ID" format(uuid)
-// @Success 200 {object} models.Response{data=models.Item} "Item found"
-// @Failure 400 {object} models.Response "Invalid ID format"
-// @Failure 401 {object} models.Response "Unauthorized"
-// @Failure 404 {object} models.Response "Item not found"
-// @Failure 500 {object} models.Response "Internal server error"
-// @Router /api/v1/data/{id} [get]
-func GetDataById(c *gin.Context) {
-	// Get ID from URL
+// GetDataById retorna um item específico pelo ID
+func (h *ItemHandler) GetDataById(c *gin.Context) {
 	id := c.Param("id")
 	
-	logger.Info("Fetching item by ID", map[string]interface{}{
-		"id": id,
-	})
-	
-	// Simulate item found
-	item := models.Item{
-		ID:          id,
-		Name:        "Item " + id,
-		Value:       "Value-" + id,
-		Description: "Description for item " + id,
-		Email:       "user" + id + "@example.com",
-		CreatedAt:   "2023-06-01T09:30:00Z",
+	item, err := h.itemService.GetItemByID(id)
+	if err != nil {
+		errors.HandleErrors(c, err)
+		return
 	}
-	
-	// Here you would normally fetch data from a database
-	// In a real implementation, you would check if the item exists
-	// and return a 404 if not found
 	
 	c.JSON(http.StatusOK, models.Response{
 		Status:  "success",
 		Message: "Data retrieved successfully",
 		Data:    item,
+	})
+}
+
+// PostData cria um novo item
+func (h *ItemHandler) PostData(c *gin.Context) {
+	var input models.InputData
+	
+	if err := c.ShouldBindJSON(&input); err != nil {
+		errors.HandleErrors(c, errors.NewBadRequestError("Invalid input data", err))
+		return
+	}
+	
+	item, err := h.itemService.CreateItem(&input)
+	if err != nil {
+		errors.HandleErrors(c, err)
+		return
+	}
+	
+	c.JSON(http.StatusCreated, models.Response{
+		Status:  "success",
+		Message: "Data created successfully",
+		Data:    item,
+	})
+}
+
+// HealthCheck responde com informações de status da API
+func HealthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "available",
+		"message": "Callable API is up and running",
 	})
 }

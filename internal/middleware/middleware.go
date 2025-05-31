@@ -1,35 +1,37 @@
-// internal/middleware/middleware.go
 package middleware
 
 import (
 	"net/http"
+	
 	"time"
+
 	"github.com/gin-gonic/gin"
+
 	"callable-api/internal/models"
 	"callable-api/pkg/logger"
 )
 
-// RequestLogger middleware for logging request information
-func RequestLogger() gin.HandlerFunc {
+// LoggerMiddleware para registrar informações da requisição
+func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Request start time
+		// Tempo de início da requisição
 		startTime := time.Now()
 		
-		// Process request
+		// Processa a requisição
 		c.Next()
 		
-		// Calculate processing time
+		// Calcula o tempo de processamento
 		endTime := time.Now()
 		latency := endTime.Sub(startTime)
 		
-		// Get request details
+		// Obtém detalhes da requisição
 		requestPath := c.Request.URL.Path
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
 		
-		// Log with structured logger
-		logger.Info("Request processed", map[string]interface{}{
+		// Registra com logger estruturado
+		logger.Info("Requisição processada", map[string]interface{}{
 			"timestamp":  endTime.Format("2006/01/02 - 15:04:05"),
 			"status":     statusCode,
 			"latency_ms": latency.Milliseconds(),
@@ -40,17 +42,12 @@ func RequestLogger() gin.HandlerFunc {
 	}
 }
 
-// TokenAuthMiddleware for JWT token verification
+// TokenAuthMiddleware para verificação de token simples (compatibilidade)
 func TokenAuthMiddleware(apiToken string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		
-		// Log for debugging
-		logger.Debug("Authorization header received", map[string]interface{}{
-			"header": authHeader,
-		})
-		
-		// Check if header exists
+		// Verifica se o header existe
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, models.Response{
 				Status:  "error",
@@ -60,22 +57,21 @@ func TokenAuthMiddleware(apiToken string) gin.HandlerFunc {
 			return
 		}
 		
-		// Extract token
+		// Extrai o token
 		var token string
 		
-		// Check if in format "Bearer {token}"
+		// Verifica se está no formato "Bearer {token}"
 		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 			token = authHeader[7:]
 		} else {
-			// Try to use entire value as token
+			// Tenta usar o valor inteiro como token
 			token = authHeader
 		}
 		
-		// For demo purposes, we check against the configured API token
-		// In a real app, this would validate a JWT token
+		// Para fins de demonstração, verificamos contra o token API configurado
 		if token == "" || (apiToken != "" && token != apiToken) {
-			logger.Warn("Authentication failed", map[string]interface{}{
-				"reason": "Invalid or empty token",
+			logger.Warn("Falha de autenticação", map[string]interface{}{
+				"reason": "Token inválido ou vazio",
 			})
 			
 			c.JSON(http.StatusUnauthorized, models.Response{
@@ -86,19 +82,19 @@ func TokenAuthMiddleware(apiToken string) gin.HandlerFunc {
 			return
 		}
 		
-		// If verification passes, continue
+		// Se a verificação passar, continua
 		c.Next()
 	}
 }
 
-// ValidationErrorMiddleware for handling validation errors
+// ValidationErrorMiddleware para tratamento de erros de validação
 func ValidationErrorMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		
-		// Check for errors after processing
+		// Verifica erros após processamento
 		if len(c.Errors) > 0 {
-			logger.Warn("Validation errors", map[string]interface{}{
+			logger.Warn("Erros de validação", map[string]interface{}{
 				"errors": c.Errors.String(),
 			})
 			
@@ -110,4 +106,26 @@ func ValidationErrorMiddleware() gin.HandlerFunc {
 			return
 		}
 	}
+}
+
+// CORSMiddleware configura as políticas CORS
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+		
+		c.Next()
+	}
+}
+
+// RequestLogger mantido para compatibilidade
+func RequestLogger() gin.HandlerFunc {
+	return LoggerMiddleware()
 }
