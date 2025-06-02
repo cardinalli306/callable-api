@@ -1,0 +1,305 @@
+=== RUN   TestSetupRouter
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"GET","path":"/health","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+--- PASS: TestSetupRouter (0.22s)
+=== RUN   TestSetupEnv
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Starting API","fields":{"port":""}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Starting API","fields":{"port":""}}
+--- PASS: TestSetupEnv (0.00s)
+=== RUN   TestSetupServer
+--- PASS: TestSetupServer (0.00s)
+=== RUN   TestSetupGCPServices
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"GCP Logger inicializado com sucesso","fields":{"useCloudLogging":false}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Secret Manager não configurado, usando valores locais"}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Cloud Storage não configurado"}
+--- PASS: TestSetupGCPServices (0.00s)
+=== RUN   TestIntegrationHealthCheck
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"GET","path":"/health","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+--- PASS: TestIntegrationHealthCheck (0.23s)
+=== RUN   TestIntegrationGetData
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando lista de itens","fields":{"limit":10,"page":1}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"GET","path":"/api/v1/data","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+--- PASS: TestIntegrationGetData (0.11s)
+=== RUN   TestIntegrationGetDataById
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando item por ID","fields":{"id":"123"}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"GET","path":"/api/v1/data/123","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"ERROR","message":"Request error","fields":{"details":"","error":"Item não encontrado","method":"GET","path":"/api/v1/data/123","stack":"callable-api/pkg/errors.NewNotFoundError:142\ncallable-api/internal/repository.(*InMemoryItemRepository).FindByID:115\ncallable-api/internal/service.(*ItemService).GetItemByID:48\ncallable-api/internal/handlers.(*ItemHandler).GetDataById:71\ncallable-api/cmd/api.SetupRouter.RequestLogger.LoggerMiddleware.func7:21\ncallable-api/cmd/api.SetupRouter.ErrorMiddleware.func3:14\ncallable-api/cmd/api.SetupRouter.RecoveryMiddleware.func2:49\ncallable-api/cmd/api.TestIntegrationGetDataById:185\n","status":404,"type":"NOT_FOUND"}}
+--- PASS: TestIntegrationGetDataById (0.10s)
+=== RUN   TestIntegrationPostDataWithAuth
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"ERROR","message":"Falha na validação do token","fields":{"error":"token is malformed: token contains an invalid number of segments"}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"POST","path":"/api/v1/data","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"ERROR","message":"Request error","fields":{"details":"","error":"Token inválido ou expirado","method":"POST","path":"/api/v1/data","stack":"callable-api/pkg/errors.NewUnauthorizedError:134\ncallable-api/cmd/api.SetupRouter.JWTAuthMiddleware.func5:42\ncallable-api/cmd/api.SetupRouter.RequestLogger.LoggerMiddleware.func7:21\ncallable-api/cmd/api.SetupRouter.ErrorMiddleware.func3:14\ncallable-api/cmd/api.SetupRouter.RecoveryMiddleware.func2:49\ncallable-api/cmd/api.TestIntegrationPostDataWithAuth:244\n","status":401,"type":"UNAUTHORIZED"}}
+--- PASS: TestIntegrationPostDataWithAuth (0.10s)
+=== RUN   TestIntegrationPostDataWithoutAuth
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"POST","path":"/api/v1/data","status":200,"timestamp":"2025/06/02 - 16:47:09"}}
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"ERROR","message":"Request error","fields":{"details":"","error":"Token de autenticação não fornecido","method":"POST","path":"/api/v1/data","stack":"callable-api/pkg/errors.NewUnauthorizedError:134\ncallable-api/cmd/api.SetupRouter.JWTAuthMiddleware.func5:19\ncallable-api/cmd/api.SetupRouter.RequestLogger.LoggerMiddleware.func7:21\ncallable-api/cmd/api.SetupRouter.ErrorMiddleware.func3:14\ncallable-api/cmd/api.SetupRouter.RecoveryMiddleware.func2:49\ncallable-api/cmd/api.TestIntegrationPostDataWithoutAuth:279\n","status":401,"type":"UNAUTHORIZED"}}
+--- PASS: TestIntegrationPostDataWithoutAuth (0.11s)
+=== RUN   TestIntegrationGCPDemo
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"","latency_ms":0,"method":"GET","path":"/api/test-gcp-integration","status":503,"timestamp":"2025/06/02 - 16:47:09"}}
+--- PASS: TestIntegrationGCPDemo (0.10s)
+=== RUN   TestStartServerSetup
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Server started","fields":{"port":"8080"}}
+--- PASS: TestStartServerSetup (0.10s)
+PASS
+ok  	callable-api/cmd/api	1.444s
+?   	callable-api/docs	[no test files]
+?   	callable-api/docs_backup	[no test files]
+=== RUN   TestHealthCheck
+[GIN] 2025/06/02 - 16:47:08 | 200 |      35.303µs |                 | GET      "/health"
+--- PASS: TestHealthCheck (0.00s)
+=== RUN   TestGetData
+[GIN] 2025/06/02 - 16:47:08 | 200 |     203.937µs |                 | GET      "/api/v1/data"
+--- PASS: TestGetData (0.00s)
+=== RUN   TestGetDataById
+[GIN] 2025/06/02 - 16:47:08 | 200 |      88.547µs |                 | GET      "/api/v1/data/123"
+    handlers_test.go:160: 
+        	Error Trace:	/home/acardinalli/completely-independent-projects/callable-api-project/internal/handlers/handlers_test.go:160
+        	Error:      	Should be true
+        	Test:       	TestGetDataById
+--- FAIL: TestGetDataById (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x111189e]
+
+goroutine 11 [running]:
+testing.tRunner.func1.2({0x12f12c0, 0x2394760})
+	/usr/local/go/src/testing/testing.go:1734 +0x21c
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1737 +0x35e
+panic({0x12f12c0?, 0x2394760?})
+	/usr/local/go/src/runtime/panic.go:792 +0x132
+callable-api/internal/handlers_test.TestGetDataById(0xc000682a80)
+	/home/acardinalli/completely-independent-projects/callable-api-project/internal/handlers/handlers_test.go:161 +0x4de
+testing.tRunner(0xc000682a80, 0x16046d0)
+	/usr/local/go/src/testing/testing.go:1792 +0xf4
+created by testing.(*T).Run in goroutine 1
+	/usr/local/go/src/testing/testing.go:1851 +0x413
+FAIL	callable-api/internal/handlers	0.357s
+=== RUN   TestTokenAuthMiddleware
+=== RUN   TestTokenAuthMiddleware/Sem_token_de_autorização_retorna_erro
+=== RUN   TestTokenAuthMiddleware/Token_inválido_retorna_erro
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"WARN","message":"Falha de autenticação","fields":{"reason":"Token inválido ou vazio"}}
+=== RUN   TestTokenAuthMiddleware/Token_válido_permite_acesso
+=== RUN   TestTokenAuthMiddleware/Token_direto_sem_Bearer_também_funciona
+--- PASS: TestTokenAuthMiddleware (0.00s)
+    --- PASS: TestTokenAuthMiddleware/Sem_token_de_autorização_retorna_erro (0.00s)
+    --- PASS: TestTokenAuthMiddleware/Token_inválido_retorna_erro (0.00s)
+    --- PASS: TestTokenAuthMiddleware/Token_válido_permite_acesso (0.00s)
+    --- PASS: TestTokenAuthMiddleware/Token_direto_sem_Bearer_também_funciona (0.00s)
+=== RUN   TestValidationErrorMiddleware
+=== RUN   TestValidationErrorMiddleware/Middleware_passa_adiante_requisições_sem_erro
+=== RUN   TestValidationErrorMiddleware/Erros_de_validação_são_tratados
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"WARN","message":"Erros de validação","fields":{"errors":"Error #01: campo obrigatório\n"}}
+--- PASS: TestValidationErrorMiddleware (0.00s)
+    --- PASS: TestValidationErrorMiddleware/Middleware_passa_adiante_requisições_sem_erro (0.00s)
+    --- PASS: TestValidationErrorMiddleware/Erros_de_validação_são_tratados (0.00s)
+=== RUN   TestLoggerMiddleware
+=== RUN   TestLoggerMiddleware/Logger_middleware_processa_requisições_corretamente
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"192.0.2.1","latency_ms":0,"method":"GET","path":"/log-test","status":200,"timestamp":"2025/06/02 - 16:47:08"}}
+--- PASS: TestLoggerMiddleware (0.00s)
+    --- PASS: TestLoggerMiddleware/Logger_middleware_processa_requisições_corretamente (0.00s)
+=== RUN   TestCORSMiddleware
+=== RUN   TestCORSMiddleware/CORS_middleware_adiciona_headers_corretos
+=== RUN   TestCORSMiddleware/CORS_middleware_responde_a_requisição_OPTIONS
+--- PASS: TestCORSMiddleware (0.00s)
+    --- PASS: TestCORSMiddleware/CORS_middleware_adiciona_headers_corretos (0.00s)
+    --- PASS: TestCORSMiddleware/CORS_middleware_responde_a_requisição_OPTIONS (0.00s)
+=== RUN   TestRequestLogger
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"192.0.2.1","latency_ms":0,"method":"GET","path":"/test","status":200,"timestamp":"2025/06/02 - 16:47:08"}}
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"INFO","message":"Requisição processada","fields":{"client_ip":"192.0.2.1","latency_ms":0,"method":"GET","path":"/test","status":200,"timestamp":"2025/06/02 - 16:47:08"}}
+--- PASS: TestRequestLogger (0.00s)
+PASS
+ok  	callable-api/internal/middleware	0.357s
+=== RUN   TestResponseStructure
+--- PASS: TestResponseStructure (0.00s)
+=== RUN   TestListResponseStructure
+--- PASS: TestListResponseStructure (0.00s)
+=== RUN   TestItemStructure
+--- PASS: TestItemStructure (0.00s)
+=== RUN   TestResponseWithEmptyData
+--- PASS: TestResponseWithEmptyData (0.00s)
+=== RUN   TestInputDataValidations
+=== RUN   TestInputDataValidations/Valid_Input
+=== RUN   TestInputDataValidations/Date_Format_Validation
+--- PASS: TestInputDataValidations (0.00s)
+    --- PASS: TestInputDataValidations/Valid_Input (0.00s)
+    --- PASS: TestInputDataValidations/Date_Format_Validation (0.00s)
+=== RUN   TestResponseMethods
+=== RUN   TestResponseMethods/IsSuccess
+=== RUN   TestResponseMethods/IsError
+=== RUN   TestResponseMethods/Other_Status
+--- PASS: TestResponseMethods (0.00s)
+    --- PASS: TestResponseMethods/IsSuccess (0.00s)
+    --- PASS: TestResponseMethods/IsError (0.00s)
+    --- PASS: TestResponseMethods/Other_Status (0.00s)
+=== RUN   TestListResponseMethods
+=== RUN   TestListResponseMethods/GetTotalPages
+=== RUN   TestListResponseMethods/HasNextPage
+=== RUN   TestListResponseMethods/HasPreviousPage
+--- PASS: TestListResponseMethods (0.00s)
+    --- PASS: TestListResponseMethods/GetTotalPages (0.00s)
+    --- PASS: TestListResponseMethods/HasNextPage (0.00s)
+    --- PASS: TestListResponseMethods/HasPreviousPage (0.00s)
+=== RUN   TestItemMethods
+=== RUN   TestItemMethods/HasDescription
+=== RUN   TestItemMethods/HasEmail
+=== RUN   TestItemMethods/GetCreatedAtTime
+--- PASS: TestItemMethods (0.00s)
+    --- PASS: TestItemMethods/HasDescription (0.00s)
+    --- PASS: TestItemMethods/HasEmail (0.00s)
+    --- PASS: TestItemMethods/GetCreatedAtTime (0.00s)
+=== RUN   TestInputDataValidate
+=== RUN   TestInputDataValidate/Valid_Input
+=== RUN   TestInputDataValidate/Name_Too_Short
+=== RUN   TestInputDataValidate/Name_Too_Long
+=== RUN   TestInputDataValidate/Missing_Value
+=== RUN   TestInputDataValidate/Description_Too_Long
+=== RUN   TestInputDataValidate/Invalid_Email_Format
+=== RUN   TestInputDataValidate/Invalid_Date_Format
+--- PASS: TestInputDataValidate (0.00s)
+    --- PASS: TestInputDataValidate/Valid_Input (0.00s)
+    --- PASS: TestInputDataValidate/Name_Too_Short (0.00s)
+    --- PASS: TestInputDataValidate/Name_Too_Long (0.00s)
+    --- PASS: TestInputDataValidate/Missing_Value (0.00s)
+    --- PASS: TestInputDataValidate/Description_Too_Long (0.00s)
+    --- PASS: TestInputDataValidate/Invalid_Email_Format (0.00s)
+    --- PASS: TestInputDataValidate/Invalid_Date_Format (0.00s)
+PASS
+ok  	callable-api/internal/models	0.357s
+?   	callable-api/internal/repository	[no test files]
+=== RUN   TestRegister_Success
+{"timestamp":"2025-06-02T16:47:08-03:00","level":"INFO","message":"Usuário registrado com sucesso","fields":{"email":"new@example.com","userId":"new123"}}
+--- PASS: TestRegister_Success (0.09s)
+=== RUN   TestRegister_EmailAlreadyExists
+--- PASS: TestRegister_EmailAlreadyExists (0.12s)
+=== RUN   TestRegister_ValidationError
+--- PASS: TestRegister_ValidationError (0.00s)
+=== RUN   TestRegister_RepositoryError
+--- PASS: TestRegister_RepositoryError (0.00s)
+=== RUN   TestLogin_Success
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Login de usuário bem-sucedido","fields":{"email":"test@example.com","userId":"user123"}}
+--- PASS: TestLogin_Success (0.13s)
+=== RUN   TestLogin_InvalidCredentials
+--- PASS: TestLogin_InvalidCredentials (0.00s)
+=== RUN   TestGetUserProfile_Success
+--- PASS: TestGetUserProfile_Success (0.11s)
+=== RUN   TestGetUserProfile_UserNotFound
+--- PASS: TestGetUserProfile_UserNotFound (0.00s)
+=== RUN   TestUpdateUserProfile_Success
+--- PASS: TestUpdateUserProfile_Success (0.07s)
+=== RUN   TestUpdateUserProfile_UserNotFound
+--- PASS: TestUpdateUserProfile_UserNotFound (0.00s)
+=== RUN   TestUpdateUserProfile_UpdateError
+--- PASS: TestUpdateUserProfile_UpdateError (0.05s)
+=== RUN   TestRefreshToken_Success
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Tokens atualizados com sucesso","fields":{"email":"test@example.com","userId":"user123"}}
+--- PASS: TestRefreshToken_Success (0.05s)
+=== RUN   TestRefreshToken_InvalidToken
+--- PASS: TestRefreshToken_InvalidToken (0.00s)
+=== RUN   TestRefreshToken_UserNotFound
+--- PASS: TestRefreshToken_UserNotFound (0.00s)
+=== RUN   TestGetItems_Success
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando lista de itens","fields":{"limit":10,"page":1}}
+--- PASS: TestGetItems_Success (0.00s)
+=== RUN   TestGetItems_Error
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando lista de itens","fields":{"limit":10,"page":1}}
+--- PASS: TestGetItems_Error (0.00s)
+=== RUN   TestGetItemByID_Success
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando item por ID","fields":{"id":"item123"}}
+--- PASS: TestGetItemByID_Success (0.00s)
+=== RUN   TestGetItemByID_EmptyID
+--- PASS: TestGetItemByID_EmptyID (0.00s)
+=== RUN   TestGetItemByID_NotFound
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando item por ID","fields":{"id":"nonexistent"}}
+--- PASS: TestGetItemByID_NotFound (0.00s)
+=== RUN   TestGetItemByID_RepositoryError
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Buscando item por ID","fields":{"id":"error"}}
+--- PASS: TestGetItemByID_RepositoryError (0.00s)
+=== RUN   TestValidateEmail
+=== RUN   TestValidateEmail/test@example.com
+=== RUN   TestValidateEmail/test@example
+=== RUN   TestValidateEmail/test.example.com
+=== RUN   TestValidateEmail/@example.com
+=== RUN   TestValidateEmail/test@.com
+=== RUN   TestValidateEmail/#00
+--- PASS: TestValidateEmail (0.00s)
+    --- PASS: TestValidateEmail/test@example.com (0.00s)
+    --- PASS: TestValidateEmail/test@example (0.00s)
+    --- PASS: TestValidateEmail/test.example.com (0.00s)
+    --- PASS: TestValidateEmail/@example.com (0.00s)
+    --- PASS: TestValidateEmail/test@.com (0.00s)
+    --- PASS: TestValidateEmail/#00 (0.00s)
+=== RUN   TestCreateItem_Success
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Criando novo item","fields":{"email":"new@example.com","name":"New Item"}}
+--- PASS: TestCreateItem_Success (0.00s)
+=== RUN   TestCreateItem_ValidationError
+=== RUN   TestCreateItem_ValidationError/Empty_Name
+=== RUN   TestCreateItem_ValidationError/Short_Name
+=== RUN   TestCreateItem_ValidationError/Empty_Email
+=== RUN   TestCreateItem_ValidationError/Invalid_Email
+=== RUN   TestCreateItem_ValidationError/Empty_Value
+--- PASS: TestCreateItem_ValidationError (0.00s)
+    --- PASS: TestCreateItem_ValidationError/Empty_Name (0.00s)
+    --- PASS: TestCreateItem_ValidationError/Short_Name (0.00s)
+    --- PASS: TestCreateItem_ValidationError/Empty_Email (0.00s)
+    --- PASS: TestCreateItem_ValidationError/Invalid_Email (0.00s)
+    --- PASS: TestCreateItem_ValidationError/Empty_Value (0.00s)
+=== RUN   TestCreateItem_RepositoryError
+{"timestamp":"2025-06-02T16:47:09-03:00","level":"INFO","message":"Criando novo item","fields":{"email":"new@example.com","name":"New Item"}}
+--- PASS: TestCreateItem_RepositoryError (0.00s)
+PASS
+ok  	callable-api/internal/service	0.812s
+?   	callable-api/pkg/auth	[no test files]
+=== RUN   TestLoad
+=== RUN   TestLoad/Default_Values
+=== RUN   TestLoad/Environment_Variables_Override
+=== RUN   TestLoad/Partial_Environment_Variables
+--- PASS: TestLoad (0.00s)
+    --- PASS: TestLoad/Default_Values (0.00s)
+    --- PASS: TestLoad/Environment_Variables_Override (0.00s)
+    --- PASS: TestLoad/Partial_Environment_Variables (0.00s)
+PASS
+ok  	callable-api/pkg/config	0.322s
+?   	callable-api/pkg/errors	[no test files]
+=== RUN   TestSetLevel
+=== RUN   TestSetLevel/SetLevel_debug
+=== RUN   TestSetLevel/SetLevel_info
+=== RUN   TestSetLevel/SetLevel_warn
+=== RUN   TestSetLevel/SetLevel_error
+=== RUN   TestSetLevel/SetLevel_invalid
+--- PASS: TestSetLevel (0.00s)
+    --- PASS: TestSetLevel/SetLevel_debug (0.00s)
+    --- PASS: TestSetLevel/SetLevel_info (0.00s)
+    --- PASS: TestSetLevel/SetLevel_warn (0.00s)
+    --- PASS: TestSetLevel/SetLevel_error (0.00s)
+    --- PASS: TestSetLevel/SetLevel_invalid (0.00s)
+=== RUN   TestLevelString
+--- PASS: TestLevelString (0.00s)
+=== RUN   TestLog
+=== RUN   TestLog/Log_DEBUG
+=== RUN   TestLog/Log_INFO
+=== RUN   TestLog/Log_WARN
+=== RUN   TestLog/Log_ERROR
+--- PASS: TestLog (0.00s)
+    --- PASS: TestLog/Log_DEBUG (0.00s)
+    --- PASS: TestLog/Log_INFO (0.00s)
+    --- PASS: TestLog/Log_WARN (0.00s)
+    --- PASS: TestLog/Log_ERROR (0.00s)
+=== RUN   TestLogLevelFiltering
+--- PASS: TestLogLevelFiltering (0.00s)
+=== RUN   TestConvenienceFunctions
+=== RUN   TestConvenienceFunctions/DebugFunction
+=== RUN   TestConvenienceFunctions/InfoFunction
+=== RUN   TestConvenienceFunctions/WarnFunction
+=== RUN   TestConvenienceFunctions/ErrorFunction
+--- PASS: TestConvenienceFunctions (0.00s)
+    --- PASS: TestConvenienceFunctions/DebugFunction (0.00s)
+    --- PASS: TestConvenienceFunctions/InfoFunction (0.00s)
+    --- PASS: TestConvenienceFunctions/WarnFunction (0.00s)
+    --- PASS: TestConvenienceFunctions/ErrorFunction (0.00s)
+=== RUN   TestNilFields
+--- PASS: TestNilFields (0.00s)
+PASS
+ok  	callable-api/pkg/logger	0.172s
+?   	callable-api/pkg/secrets	[no test files]
+?   	callable-api/pkg/storage	[no test files]
+FAIL

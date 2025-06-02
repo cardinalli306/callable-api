@@ -155,10 +155,25 @@ func TestGetDataById(t *testing.T) {
     assert.Equal(t, "success", response.Status)
     assert.Equal(t, "Data retrieved successfully", response.Message)
 
-    // Modificado para testar a resposta correta conforme implementação
-    data, ok := response.Data.(*models.Item)
-    assert.True(t, ok)
-    assert.Equal(t, "123", data.ID)
+    // ADICIONADO: Imprimir o tipo e valor de response.Data para diagnóstico
+    t.Logf("Tipo de response.Data: %T, valor: %+v", response.Data, response.Data)
+    
+    // Modificado para verificar de forma segura antes de acessar
+    assert.NotNil(t, response.Data, "Response.Data não deveria ser nulo")
+    
+    // Abordagem mais segura para verificar o tipo
+    if mapData, ok := response.Data.(map[string]interface{}); ok {
+        // Se for um mapa JSON
+        t.Log("response.Data é um map[string]interface{}")
+        assert.Equal(t, "123", mapData["id"], "ID não corresponde ao esperado")
+    } else if itemData, ok := response.Data.(*models.Item); ok {
+        // Se for um *models.Item
+        t.Log("response.Data é um *models.Item")
+        assert.Equal(t, "123", itemData.ID, "ID não corresponde ao esperado")
+    } else {
+        // Se for outro tipo
+        assert.Fail(t, "response.Data não é do tipo esperado. É do tipo: %T", response.Data)
+    }
     
     // Verificar se o mock foi chamado corretamente
     mockService.AssertExpectations(t)

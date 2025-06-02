@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"cloud.google.com/go/storage"
 
 	_ "callable-api/docs" // Para geração de documentação Swagger
 	"callable-api/internal/handlers"
@@ -24,7 +25,7 @@ import (
 	// Importações novas para GCP
 	gcplogger "callable-api/pkg/logger" // Renomeando para evitar conflito
 	"callable-api/pkg/secrets"
-	"callable-api/pkg/storage"
+	mystorage "callable-api/pkg/storage"
 )
 
 // @title Callable API
@@ -58,7 +59,7 @@ func SetupEnv(cfg *config.Config) {
 }
 
 // SetupGCPServices configura e inicializa os serviços do GCP
-func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManager, *storage.CloudStorage) {
+func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManager, *mystorage.CloudStorage) {
 	ctx := context.Background()
 
 	// Inicializar o logger com suporte a GCP
@@ -86,9 +87,9 @@ func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManag
 	}
 
 	// Inicializar Cloud Storage se bucket estiver configurado
-	var cloudStorage *storage.CloudStorage
+	var cloudStorage *mystorage.CloudStorage
 	if cfg.GCPStorageBucket != "" {
-		cloudStorage = storage.NewCloudStorage(cfg.GCPStorageBucket)
+		cloudStorage = mystorage.NewCloudStorage(cfg.GCPStorageBucket)
 		logger.Info("Cloud Storage inicializado", map[string]interface{}{
 			"bucket": cfg.GCPStorageBucket,
 		})
@@ -100,7 +101,7 @@ func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManag
 }
 
 // SetupRouter configures and returns the Gin router
-func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.SecretManager, cloudStorage *storage.CloudStorage) *gin.Engine {
+func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.SecretManager, cloudStorage *mystorage.CloudStorage, storageClient *storage.Client) *gin.Engine {
 	// Initialize Gin router
 	router := gin.New()
 
@@ -122,7 +123,7 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	authHandler := handlers.NewAuthHandler(authService)
 
 	// Criar handler de demonstração do GCP (se configurado)
-	gcpDemoHandler := handlers.NewGCPDemoHandler(cfg, gcpLog, secretMgr, cloudStorage)
+	gcpDemoHandler := handlers.NewGCPDemoHandler(cfg, gcpLog, secretMgr, storageClient)
 
 	// Health check route
 	router.GET("/health", handlers.HealthCheck)
@@ -130,7 +131,7 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	// Rota para testar integração GCP
 	router.GET("/api/test-gcp-integration", func(c *gin.Context) {
 		if gcpDemoHandler != nil {
-			gcpDemoHandler.TestIntegration(c.Writer, c.Request)
+			gcpDemoHandler.TestIntegration(c)
 		} else {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":  "error",
@@ -196,7 +197,7 @@ func SetupServer(cfg *config.Config, router *gin.Engine) *http.Server {
 }
 
 // StartServer starts the HTTP server and sets up graceful shutdown
-func StartServer(server *http.Server, cfg *config.Config, gcpLog gcplogger.Logger) {
+func StartServer(server *http.Server, cfg *config.Config, gcpLog gcplogger.Logger, storageClient *storage.Client) {
 	// Start server in a separate goroutine
 	go func() {
 		logger.Info("Server started", map[string]interface{}{
@@ -234,6 +235,15 @@ func StartServer(server *http.Server, cfg *config.Config, gcpLog gcplogger.Logge
 		}
 	}
 
+	// Fechar o cliente de armazenamento GCP se estiver configurado
+	if storageClient != nil {
+		if err := storageClient.Close(); err != nil {
+			logger.Error("Error closing GCP storage client", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}
+
 	logger.Info("Server exited gracefully", nil)
 }
 
@@ -247,12 +257,24 @@ func main() {
 	// Setup GCP Services
 	gcpLog, secretMgr, cloudStorage := SetupGCPServices(cfg)
 
+	// Obter cliente de armazenamento para o manipulador GCP
+	var storageClient *storage.Client
+	if cloudStorage != nil {
+		var err error
+		storageClient, err = cloudStorage.GetClient(context.Background())
+		if err != nil {
+			logger.Error("Erro ao criar cliente Cloud Storage", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}
+
 	// Setup router with GCP services
-	router := SetupRouter(cfg, gcpLog, secretMgr, cloudStorage)
+	router := SetupRouter(cfg, gcpLog, secretMgr, cloudStorage, storageClient)
 
 	// Setup server
 	server := SetupServer(cfg, router)
 
 	// Start server with graceful shutdown
-	StartServer(server, cfg, gcpLog)
+	StartServer(server, cfg, gcpLog, storageClient)
 }

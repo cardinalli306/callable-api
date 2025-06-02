@@ -22,6 +22,20 @@ func NewCloudStorage(bucketName string) *CloudStorage {
 	}
 }
 
+// GetClient retorna um novo cliente de armazenamento GCP
+func (s *CloudStorage) GetClient(ctx context.Context) (*storage.Client, error) {
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao criar cliente: %v", err)
+	}
+	return client, nil
+}
+
+// GetBucketName retorna o nome do bucket configurado
+func (s *CloudStorage) GetBucketName() string {
+	return s.bucketName
+}
+
 // UploadFile faz upload de um arquivo para o Cloud Storage
 func (s *CloudStorage) UploadFile(ctx context.Context, objectName string, data io.Reader) error {
 	client, err := storage.NewClient(ctx)

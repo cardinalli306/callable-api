@@ -3,114 +3,186 @@ package config
 
 import (
 	"os"
-	"reflect"
 	"testing"
+	"time"
 )
 
 func TestLoad(t *testing.T) {
-	// Salvar o estado atual das variáveis de ambiente
-	originalPort := os.Getenv("API_PORT")
-	originalLogLevel := os.Getenv("LOG_LEVEL")
-	originalOrigins := os.Getenv("ALLOWED_ORIGINS")
-	originalToken := os.Getenv("DEMO_API_TOKEN")
+	// Salvar o estado atual das variáveis de ambiente relevantes
+	originalVars := saveEnvVars([]string{
+		"SERVER_PORT", "SERVER_HOST", 
+		"DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE",
+		"JWT_SECRET", "JWT_EXPIRATION", "JWT_REFRESH_SECRET", "JWT_REFRESH_EXPIRATION",
+		"GCP_PROJECT_ID", "GCP_STORAGE_BUCKET", "USE_SECRET_MANAGER", "USE_CLOUD_LOGGING", "LOGGING_NAME",
+		"LOG_LEVEL", "PORT", "READ_TIMEOUT_SECS", "WRITE_TIMEOUT_SECS", "GRACEFUL_TIMEOUT_SECS",
+		"JWT_ISSUER", "JWT_EXPIRATION_MINUTES", "JWT_REFRESH_EXPIRATION_DAYS",
+	})
+	
+	// Limpar todas as variáveis antes de cada teste
+	clearEnvVars(originalVars)
 
-	// Limpar as variáveis para o teste
-	os.Unsetenv("API_PORT")
-	os.Unsetenv("LOG_LEVEL")
-	os.Unsetenv("ALLOWED_ORIGINS")
-	os.Unsetenv("DEMO_API_TOKEN")
+	// Restaurar variáveis de ambiente no final
+	defer restoreEnvVars(originalVars)
 
-	// Test case 1: Default values
+	// Test case 1: Valores padrão
 	t.Run("Default Values", func(t *testing.T) {
+		// Limpar variáveis para garantir uso de valores padrão
+		clearEnvVars(originalVars)
+		
 		cfg := Load()
-		if cfg.Port != "8080" {
-			t.Errorf("Default port should be 8080, got %s", cfg.Port)
+		
+		// Verificar valores padrão do servidor
+		if cfg.ServerPort != "8080" {
+			t.Errorf("Default ServerPort should be 8080, got %s", cfg.ServerPort)
 		}
-		if cfg.LogLevel != "debug" {
-			t.Errorf("Default log level should be debug, got %s", cfg.LogLevel)
+		if cfg.ServerHost != "" {
+			t.Errorf("Default ServerHost should be empty, got %s", cfg.ServerHost)
 		}
-		if !reflect.DeepEqual(cfg.AllowedOrigins, []string{"localhost:*", "127.0.0.1:*"}) {
-			t.Errorf("Default allowed origins should be [localhost:*, 127.0.0.1:*], got %v", cfg.AllowedOrigins)
+		
+		// Verificar valores padrão do banco de dados
+		if cfg.DBHost != "localhost" {
+			t.Errorf("Default DBHost should be localhost, got %s", cfg.DBHost)
 		}
-		if cfg.DemoApiToken != "api-token-123" {
-			t.Errorf("Default API token should be api-token-123, got %s", cfg.DemoApiToken)
+		if cfg.DBPort != "5432" {
+			t.Errorf("Default DBPort should be 5432, got %s", cfg.DBPort)
 		}
-		if cfg.ReadTimeoutSecs != 15 {
-			t.Errorf("Default read timeout should be 15, got %d", cfg.ReadTimeoutSecs)
+		
+		// Verificar valores padrão do JWT
+		if cfg.JWTSecret != "default-secret-key" {
+			t.Errorf("Default JWTSecret incorrect, got %s", cfg.JWTSecret)
 		}
-		if cfg.WriteTimeoutSecs != 15 {
-			t.Errorf("Default write timeout should be 15, got %d", cfg.WriteTimeoutSecs)
+		if cfg.JWTExpiration != 3600*time.Second {
+			t.Errorf("Default JWTExpiration should be 3600s, got %v", cfg.JWTExpiration)
 		}
-		if cfg.GracefulTimeoutSecs != 5 {
-			t.Errorf("Default graceful timeout should be 5, got %d", cfg.GracefulTimeoutSecs)
+		
+		// Verificar configurações de logs e timeout
+		if cfg.LogLevel != "info" {
+			t.Errorf("Default LogLevel should be info, got %s", cfg.LogLevel)
+		}
+		if cfg.ReadTimeoutSecs != 10 {
+			t.Errorf("Default ReadTimeoutSecs should be 10, got %d", cfg.ReadTimeoutSecs)
+		}
+		if cfg.WriteTimeoutSecs != 10 {
+			t.Errorf("Default WriteTimeoutSecs should be 10, got %d", cfg.WriteTimeoutSecs)
+		}
+		if cfg.GracefulTimeoutSecs != 15 {
+			t.Errorf("Default GracefulTimeoutSecs should be 15, got %d", cfg.GracefulTimeoutSecs)
+		}
+		
+		// Verificar valores de tempo JWT
+		if cfg.JWTExpirationMinutes != 720 {
+			t.Errorf("Default JWTExpirationMinutes should be 720, got %d", cfg.JWTExpirationMinutes)
+		}
+		if cfg.JWTRefreshExpirationDays != 7 {
+			t.Errorf("Default JWTRefreshExpirationDays should be 7, got %d", cfg.JWTRefreshExpirationDays)
+		}
+		if cfg.JWTIssuer != "callable-api" {
+			t.Errorf("Default JWTIssuer should be callable-api, got %s", cfg.JWTIssuer)
 		}
 	})
 
-	// Test case 2: Environment variables override
+	// Test case 2: Sobrescrita com variáveis de ambiente
 	t.Run("Environment Variables Override", func(t *testing.T) {
-		os.Setenv("API_PORT", "9000")
+		// Limpar e definir as variáveis para o teste
+		clearEnvVars(originalVars)
+		
+		os.Setenv("SERVER_PORT", "9000")
+		os.Setenv("SERVER_HOST", "api.example.com")
+		os.Setenv("DB_HOST", "db.example.com")
+		os.Setenv("DB_PORT", "5433")
+		os.Setenv("JWT_SECRET", "custom-secret")
+		os.Setenv("JWT_EXPIRATION", "7200")
 		os.Setenv("LOG_LEVEL", "error")
-		os.Setenv("ALLOWED_ORIGINS", "example.com,api.example.com")
-		os.Setenv("DEMO_API_TOKEN", "custom-token")
+		os.Setenv("READ_TIMEOUT_SECS", "30")
+		os.Setenv("JWT_EXPIRATION_MINUTES", "60")
+		os.Setenv("JWT_ISSUER", "custom-issuer")
 
 		cfg := Load()
-		if cfg.Port != "9000" {
-			t.Errorf("Port should be 9000, got %s", cfg.Port)
+		
+		// Verificar se as variáveis foram aplicadas corretamente
+		if cfg.ServerPort != "9000" {
+			t.Errorf("ServerPort should be 9000, got %s", cfg.ServerPort)
+		}
+		if cfg.ServerHost != "api.example.com" {
+			t.Errorf("ServerHost should be api.example.com, got %s", cfg.ServerHost)
+		}
+		if cfg.DBHost != "db.example.com" {
+			t.Errorf("DBHost should be db.example.com, got %s", cfg.DBHost)
+		}
+		if cfg.DBPort != "5433" {
+			t.Errorf("DBPort should be 5433, got %s", cfg.DBPort)
+		}
+		if cfg.JWTSecret != "custom-secret" {
+			t.Errorf("JWTSecret should be custom-secret, got %s", cfg.JWTSecret)
+		}
+		if cfg.JWTExpiration != 7200*time.Second {
+			t.Errorf("JWTExpiration should be 7200s, got %v", cfg.JWTExpiration)
 		}
 		if cfg.LogLevel != "error" {
-			t.Errorf("Log level should be error, got %s", cfg.LogLevel)
+			t.Errorf("LogLevel should be error, got %s", cfg.LogLevel)
 		}
-		expectedOrigins := []string{"example.com", "api.example.com"}
-		if !reflect.DeepEqual(cfg.AllowedOrigins, expectedOrigins) {
-			t.Errorf("Allowed origins should be %v, got %v", expectedOrigins, cfg.AllowedOrigins)
+		if cfg.ReadTimeoutSecs != 30 {
+			t.Errorf("ReadTimeoutSecs should be 30, got %d", cfg.ReadTimeoutSecs)
 		}
-		if cfg.DemoApiToken != "custom-token" {
-			t.Errorf("API token should be custom-token, got %s", cfg.DemoApiToken)
+		if cfg.JWTExpirationMinutes != 60 {
+			t.Errorf("JWTExpirationMinutes should be 60, got %d", cfg.JWTExpirationMinutes)
+		}
+		if cfg.JWTIssuer != "custom-issuer" {
+			t.Errorf("JWTIssuer should be custom-issuer, got %s", cfg.JWTIssuer)
 		}
 	})
 
-	// Test case 3: Partial environment variables
+	// Test case 3: Configurações parciais
 	t.Run("Partial Environment Variables", func(t *testing.T) {
-		os.Unsetenv("API_PORT")
-		os.Unsetenv("LOG_LEVEL")
-		os.Setenv("ALLOWED_ORIGINS", "test.com")
-		os.Unsetenv("DEMO_API_TOKEN")
+		// Limpar e definir apenas algumas variáveis
+		clearEnvVars(originalVars)
+		
+		os.Setenv("SERVER_PORT", "5000")
+		os.Setenv("JWT_SECRET", "partial-test-secret")
 
 		cfg := Load()
-		if cfg.Port != "8080" {
-			t.Errorf("Port should fall back to default 8080, got %s", cfg.Port)
+		
+		// Verificar se as variáveis definidas foram aplicadas
+		if cfg.ServerPort != "5000" {
+			t.Errorf("ServerPort should be 5000, got %s", cfg.ServerPort)
 		}
-		if cfg.LogLevel != "debug" {
-			t.Errorf("Log level should fall back to default debug, got %s", cfg.LogLevel)
+		if cfg.JWTSecret != "partial-test-secret" {
+			t.Errorf("JWTSecret should be partial-test-secret, got %s", cfg.JWTSecret)
 		}
-		expectedOrigins := []string{"test.com"}
-		if !reflect.DeepEqual(cfg.AllowedOrigins, expectedOrigins) {
-			t.Errorf("Allowed origins should be %v, got %v", expectedOrigins, cfg.AllowedOrigins)
+		
+		// Verificar se os outros valores permaneceram como padrão
+		if cfg.DBHost != "localhost" {
+			t.Errorf("DBHost should fall back to default localhost, got %s", cfg.DBHost)
 		}
-		if cfg.DemoApiToken != "api-token-123" {
-			t.Errorf("API token should fall back to default api-token-123, got %s", cfg.DemoApiToken)
+		if cfg.LogLevel != "info" {
+			t.Errorf("LogLevel should fall back to default info, got %s", cfg.LogLevel)
 		}
 	})
+}
 
-	// Restore original environment variables
-	if originalPort != "" {
-		os.Setenv("API_PORT", originalPort)
-	} else {
-		os.Unsetenv("API_PORT")
+// Função auxiliar para salvar o estado atual das variáveis de ambiente
+func saveEnvVars(vars []string) map[string]string {
+	env := make(map[string]string)
+	for _, key := range vars {
+		env[key] = os.Getenv(key)
 	}
-	if originalLogLevel != "" {
-		os.Setenv("LOG_LEVEL", originalLogLevel)
-	} else {
-		os.Unsetenv("LOG_LEVEL")
+	return env
+}
+
+// Função auxiliar para limpar as variáveis de ambiente
+func clearEnvVars(env map[string]string) {
+	for key := range env {
+		os.Unsetenv(key)
 	}
-	if originalOrigins != "" {
-		os.Setenv("ALLOWED_ORIGINS", originalOrigins)
-	} else {
-		os.Unsetenv("ALLOWED_ORIGINS")
-	}
-	if originalToken != "" {
-		os.Setenv("DEMO_API_TOKEN", originalToken)
-	} else {
-		os.Unsetenv("DEMO_API_TOKEN")
+}
+
+// Função auxiliar para restaurar as variáveis de ambiente
+func restoreEnvVars(env map[string]string) {
+	for key, value := range env {
+		if value == "" {
+			os.Unsetenv(key)
+		} else {
+			os.Setenv(key, value)
+		}
 	}
 }

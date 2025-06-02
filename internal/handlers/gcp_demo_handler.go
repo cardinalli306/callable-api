@@ -1,25 +1,26 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"cloud.google.com/go/storage"
+	"github.com/gin-gonic/gin"
 
 	"callable-api/pkg/auth"
 	"callable-api/pkg/config"
 	"callable-api/pkg/logger"
 	"callable-api/pkg/secrets"
-	"callable-api/pkg/storage"
 )
 
-// GCPDemoHandler demonstra a integração com GCP
+// GCPDemoHandler gerencia as rotas de demonstração da integração GCP
 type GCPDemoHandler struct {
 	config      *config.Config
 	logger      logger.Logger
 	secretMgr   secrets.SecretManager
-	storage     *storage.CloudStorage
+	storage     *storage.Client
 	jwtProvider *auth.SecretProvider
 }
 
@@ -28,122 +29,135 @@ func NewGCPDemoHandler(
 	cfg *config.Config,
 	log logger.Logger,
 	secretMgr secrets.SecretManager,
-	storage *storage.CloudStorage,
+	storage *storage.Client,
 ) *GCPDemoHandler {
+	var jwtProvider *auth.SecretProvider
+	// Cria o jwtProvider apenas se todos os componentes necessários estiverem disponíveis
+	if cfg != nil && secretMgr != nil && log != nil {
+		jwtProvider = auth.NewSecretProvider(cfg, secretMgr, log)
+	}
+	
 	return &GCPDemoHandler{
 		config:      cfg,
 		logger:      log,
 		secretMgr:   secretMgr,
 		storage:     storage,
-		jwtProvider: auth.NewSecretProvider(cfg, secretMgr, log),
+		jwtProvider: jwtProvider,
 	}
 }
 
 // TestIntegration testa todas as integrações
-func (h *GCPDemoHandler) TestIntegration(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	response := map[string]interface{}{
+func (h *GCPDemoHandler) TestIntegration(c *gin.Context) {
+	// Verificar se os serviços GCP necessários estão disponíveis
+	if h.logger == nil || h.secretMgr == nil || h.storage == nil || h.jwtProvider == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":  "error",
+			"message": "GCP integration not configured",
+			"details": gin.H{
+				"logger_available":       h.logger != nil,
+				"secret_mgr_available":   h.secretMgr != nil,
+				"storage_available":      h.storage != nil,
+				"jwt_provider_available": h.jwtProvider != nil,
+			},
+		})
+		return
+	}
+
+	// Se chegou aqui, os serviços estão disponíveis
+	ctx := c.Request.Context()
+	response := gin.H{
 		"status":    "success",
-		"tests":     make(map[string]interface{}),
+		"tests":     gin.H{},
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
+	tests := response["tests"].(gin.H)
 
-	// 1. Testar Logging
+	// Teste de logging
+	// Corrigido para usar a versão variádica conforme definido na interface Logger
 	h.logger.Info("Teste de integração GCP iniciado", map[string]interface{}{
-		"remote_addr": r.RemoteAddr,
-		"user_agent":  r.UserAgent(),
-		"method":      r.Method,
+		"handler": "GCPDemoHandler",
+		"path":    c.Request.URL.Path,
+		"method":  c.Request.Method,
 	})
-	response["tests"].(map[string]interface{})["logging"] = map[string]interface{}{
-		"status":                "success",
-		"message":               "Logs enviados com sucesso",
-		"cloud_logging_enabled": h.config.UseCloudLogging,
+	tests["logging"] = gin.H{
+		"status":  "success",
+		"message": "Log enviado com sucesso",
 	}
 
-	// 2. Testar Secret Manager (com fallback)
-	jwtSecret, err := h.jwtProvider.GetJWTSecret(ctx)
+	// Teste de Secret Manager
+	secretTest, err := h.testSecretManager(ctx)
+	tests["secret_manager"] = secretTest
 	if err != nil {
-		h.logger.Error("Falha no teste de Secret Manager", err)
-		response["tests"].(map[string]interface{})["secret_manager"] = map[string]interface{}{
-			"status":         "error",
-			"message":        "Falha ao acessar segredos",
-			"using_fallback": true,
-			"error":          err.Error(),
-		}
-	} else {
-		secretLen := len(jwtSecret)
-		secretPreview := ""
-		if secretLen > 0 {
-			previewLen := min(3, secretLen)
-			secretPreview = jwtSecret[:previewLen] + "..."
-		}
-
-		response["tests"].(map[string]interface{})["secret_manager"] = map[string]interface{}{
-			"status":               "success",
-			"secret_length":        secretLen,
-			"preview":              secretPreview,
-			"using_secret_manager": h.config.UseSecretManager,
-		}
+		response["status"] = "partial_success"
 	}
 
-	// 3. Testar Cloud Storage
-	if h.storage != nil && h.config.GCPStorageBucket != "" {
-		testData := []byte("Teste de integração com Cloud Storage - " + time.Now().Format(time.RFC3339))
-		objectName := fmt.Sprintf("demo/test-%s.txt", time.Now().Format("20060102-150405"))
-
-		err := h.storage.UploadFile(ctx, objectName, bytes.NewReader(testData))
-		if err != nil {
-			h.logger.Error("Erro no upload para Cloud Storage", err)
-			response["tests"].(map[string]interface{})["storage"] = map[string]interface{}{
-				"status":  "error",
-				"message": "Falha no upload",
-				"error":   err.Error(),
-			}
-		} else {
-			signedURL, urlErr := h.storage.GetSignedURL(ctx, objectName, 15*time.Minute)
-			signedURLStatus := "success"
-			signedURLMsg := ""
-
-			if urlErr != nil {
-				signedURLStatus = "error"
-				signedURLMsg = urlErr.Error()
-				h.logger.Error("Erro ao gerar URL assinada", urlErr)
-			}
-
-			response["tests"].(map[string]interface{})["storage"] = map[string]interface{}{
-				"status":      "success",
-				"bucket":      h.config.GCPStorageBucket,
-				"object_name": objectName,
-				"signed_url": map[string]interface{}{
-					"status":     signedURLStatus,
-					"url":        signedURL,
-					"error":      signedURLMsg,
-					"expiration": "15 minutos",
-				},
-				"data_size": len(testData),
-			}
-		}
-	} else {
-		response["tests"].(map[string]interface{})["storage"] = map[string]interface{}{
-			"status":            "skipped",
-			"message":           "Cloud Storage não configurado",
-			"bucket_configured": h.config.GCPStorageBucket != "",
-		}
+	// Teste de Storage
+	storageTest, err := h.testStorage(ctx)
+	tests["storage"] = storageTest
+	if err != nil {
+		response["status"] = "partial_success"
 	}
 
-	// Registrar o resultado completo
-	h.logger.Info("Teste de integração GCP concluído", map[string]interface{}{
-		"success": true,
-	})
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	// Retorna a resposta
+	c.JSON(http.StatusOK, response)
 }
 
-// min retorna o menor de dois inteiros
-func min(a, b int) int {
-	if a < b {
-		return a
+// testSecretManager testa o Secret Manager
+func (h *GCPDemoHandler) testSecretManager(ctx context.Context) (gin.H, error) {
+	result := gin.H{
+		"status": "success",
 	}
-	return b
+
+	// Verifica se o JWT Provider está disponível
+	if h.jwtProvider == nil {
+		result["status"] = "error"
+		result["message"] = "JWT Provider não configurado"
+		return result, fmt.Errorf("jwt provider não configurado")
+	}
+
+	// Tenta buscar o segredo JWT
+	_, err := h.jwtProvider.GetJWTSecret(ctx)
+	if err != nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("Erro ao buscar segredo JWT: %v", err)
+		return result, err
+	}
+
+	result["message"] = "Secret Manager testado com sucesso"
+	return result, nil
+}
+
+// testStorage testa o Cloud Storage
+func (h *GCPDemoHandler) testStorage(ctx context.Context) (gin.H, error) {
+	result := gin.H{
+		"status": "success",
+	}
+
+	// Verifica se o Storage e o bucket estão configurados
+	if h.storage == nil || h.config.GCPStorageBucket == "" {
+		result["status"] = "error"
+		result["message"] = "Cloud Storage não configurado"
+		return result, fmt.Errorf("cloud storage não configurado")
+	}
+
+	// Lista os objetos do bucket para testar o acesso
+	bucket := h.storage.Bucket(h.config.GCPStorageBucket)
+	it := bucket.Objects(ctx, nil)
+	
+	// Tenta buscar o primeiro objeto apenas para testar
+	_, err := it.Next()
+	if err != nil && err != storage.ErrObjectNotExist {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("Erro ao listar objetos do bucket: %v", err)
+		return result, err
+	}
+
+	result["message"] = "Cloud Storage testado com sucesso"
+	result["bucket"] = h.config.GCPStorageBucket
+	return result, nil
+}
+
+// RegisterRoutes registra as rotas do handler
+func (h *GCPDemoHandler) RegisterRoutes(router *gin.Engine) {
+	router.GET("/api/test/gcp", h.TestIntegration)
 }
