@@ -1,5 +1,22 @@
 basePath: /
 definitions:
+  models.APIError:
+    properties:
+      details:
+        description: Technical details (optional)
+        type: string
+      field_errors:
+        additionalProperties:
+          type: string
+        description: Validation field errors
+        type: object
+      message:
+        description: User-friendly message
+        type: string
+      status:
+        description: Always "error"
+        type: string
+    type: object
   models.InputData:
     properties:
       created_at:
@@ -25,45 +42,29 @@ definitions:
     - name
     - value
     type: object
-  models.Item:
+  models.LoginInput:
     properties:
-      created_at:
-        example: "2023-05-22T14:56:32Z"
-        type: string
-      description:
-        example: Detailed item description
-        type: string
       email:
-        example: user@example.com
         type: string
-      id:
-        example: 5f8d0e6e-6c0a-4f0a-8e0a-6c0a4f0a8e0a
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.RegisterUserInput:
+    properties:
+      email:
         type: string
       name:
-        example: Item Name
         type: string
-      value:
-        example: ABC123
+      password:
+        minLength: 6
         type: string
-    type: object
-  models.ListResponse:
-    properties:
-      data: {}
-      message:
-        example: Data retrieved successfully
-        type: string
-      page:
-        example: 1
-        type: integer
-      page_size:
-        example: 10
-        type: integer
-      status:
-        example: success
-        type: string
-      total_rows:
-        example: 42
-        type: integer
+    required:
+    - email
+    - name
+    - password
     type: object
   models.Response:
     properties:
@@ -75,6 +76,26 @@ definitions:
         example: success
         type: string
     type: object
+  models.TokenPair:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  models.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -82,65 +103,240 @@ info:
     name: Desenvolvedor
     url: https://exemplo.com
   description: Uma API robusta construída em Go usando o framework Gin, oferecendo
-    endpoints para gerenciamento de dados com validação completa.
+    endpoints para gerenciamento de dados com validação completa e autenticação JWT.
   title: Callable API
   version: "1.0"
 paths:
+  /api/test/gcp:
+    get:
+      description: Testa a integração com vários serviços Google Cloud Platform (Logging,
+        Secret Manager e Storage)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Resultado dos testes de integração
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Erro de serviços não disponíveis
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Teste de integração GCP
+      tags:
+      - gcp
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica o usuário e retorna os tokens JWT
+      parameters:
+      - description: Credenciais de login
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Login de usuário
+      tags:
+      - auth
+  /api/v1/auth/profile:
+    get:
+      description: Retorna os dados do perfil do usuário autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      security:
+      - Bearer: []
+      summary: Perfil do usuário
+      tags:
+      - auth
+    put:
+      consumes:
+      - application/json
+      description: Atualiza os dados do perfil do usuário autenticado
+      parameters:
+      - description: Dados para atualização do perfil
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      security:
+      - Bearer: []
+      summary: Atualizar perfil
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Renova os tokens JWT usando um token de atualização
+      parameters:
+      - description: Token de atualização
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Atualizar tokens
+      tags:
+      - auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma nova conta de usuário no sistema
+      parameters:
+      - description: Dados de registro
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterUserInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Registrar um novo usuário
+      tags:
+      - auth
   /api/v1/data:
     get:
-      description: Returns a paginated list of available items
+      description: Retorna uma lista paginada de itens
       parameters:
-      - default: 1
-        description: Page number
+      - description: 'Número da página (default: 1)'
         in: query
-        minimum: 1
         name: page
         type: integer
-      - default: 10
-        description: Items per page
+      - description: 'Itens por página (default: 10, max: 100)'
         in: query
-        maximum: 100
         name: limit
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Data retrieved successfully
+          description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/models.ListResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Item'
-                  type: array
-              type: object
+            $ref: '#/definitions/models.Response'
         "400":
-          description: Invalid request
+          description: Bad Request
           schema:
-            $ref: '#/definitions/models.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.Response'
+            $ref: '#/definitions/models.APIError'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.Response'
-      security:
-      - Bearer: []
-      summary: Get data list
+            $ref: '#/definitions/models.APIError'
+      summary: Listar dados
       tags:
-      - items
+      - data
     post:
       consumes:
       - application/json
-      description: Add a new item based on provided data
+      description: Cria um novo item de dados
       parameters:
-      - description: Item data
+      - description: Dados do item
         in: body
-        name: data
+        name: item
         required: true
         schema:
           $ref: '#/definitions/models.InputData'
@@ -148,37 +344,31 @@ paths:
       - application/json
       responses:
         "201":
-          description: Item created
-          schema:
-            allOf:
-            - $ref: '#/definitions/models.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Item'
-              type: object
-        "400":
-          description: Invalid input data
+          description: Created
           schema:
             $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/models.Response'
+            $ref: '#/definitions/models.APIError'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.Response'
+            $ref: '#/definitions/models.APIError'
       security:
       - Bearer: []
-      summary: Create new item
+      summary: Criar novo item
       tags:
-      - items
+      - data
   /api/v1/data/{id}:
     get:
-      description: Returns a specific item based on provided ID
+      description: Retorna um item específico pelo ID
       parameters:
-      - description: Item ID
-        format: uuid
+      - description: ID do item
         in: path
         name: id
         required: true
@@ -187,48 +377,39 @@ paths:
       - application/json
       responses:
         "200":
-          description: Item found
+          description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/models.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.Item'
-              type: object
+            $ref: '#/definitions/models.Response'
         "400":
-          description: Invalid ID format
+          description: Bad Request
           schema:
-            $ref: '#/definitions/models.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.Response'
+            $ref: '#/definitions/models.APIError'
         "404":
-          description: Item not found
+          description: Not Found
           schema:
-            $ref: '#/definitions/models.Response'
+            $ref: '#/definitions/models.APIError'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.Response'
-      security:
-      - Bearer: []
-      summary: Get item by ID
+            $ref: '#/definitions/models.APIError'
+      summary: Obter dados por ID
       tags:
-      - items
+      - data
   /health:
     get:
-      description: Returns a 200 status if the API is running
+      description: Retorna o status atual da API
       produces:
       - application/json
       responses:
         "200":
-          description: API is running
+          description: OK
           schema:
-            $ref: '#/definitions/models.Response'
-      summary: Check API status
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verificar status da API
       tags:
-      - health
+      - system
 schemes:
 - http
 - https

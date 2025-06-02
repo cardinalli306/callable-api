@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"cloud.google.com/go/storage"
 
 	_ "callable-api/docs" // Para geração de documentação Swagger
 	"callable-api/internal/handlers"
@@ -126,9 +126,22 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	gcpDemoHandler := handlers.NewGCPDemoHandler(cfg, gcpLog, secretMgr, storageClient)
 
 	// Health check route
+	// @Summary Verificar status da API
+	// @Description Retorna o status atual da API
+	// @Tags system
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Router /health [get]
 	router.GET("/health", handlers.HealthCheck)
 
 	// Rota para testar integração GCP
+	// @Summary Teste de integração GCP (Alternativo)
+	// @Description Testa a integração com serviços Google Cloud Platform através do endpoint alternativo
+	// @Tags gcp
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Failure 503 {object} map[string]interface{}
+	// @Router /api/test-gcp-integration [get]
 	router.GET("/api/test-gcp-integration", func(c *gin.Context) {
 		if gcpDemoHandler != nil {
 			gcpDemoHandler.TestIntegration(c)

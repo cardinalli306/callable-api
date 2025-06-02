@@ -47,6 +47,13 @@ func NewGCPDemoHandler(
 }
 
 // TestIntegration testa todas as integrações
+// @Summary Teste de integração GCP
+// @Description Testa a integração com vários serviços Google Cloud Platform (Logging, Secret Manager e Storage)
+// @Tags gcp
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Resultado dos testes de integração"
+// @Failure 503 {object} map[string]interface{} "Erro de serviços não disponíveis"
+// @Router /api/test/gcp [get]
 func (h *GCPDemoHandler) TestIntegration(c *gin.Context) {
 	// Verificar se os serviços GCP necessários estão disponíveis
 	if h.logger == nil || h.secretMgr == nil || h.storage == nil || h.jwtProvider == nil {
@@ -158,6 +165,9 @@ func (h *GCPDemoHandler) testStorage(ctx context.Context) (gin.H, error) {
 }
 
 // RegisterRoutes registra as rotas do handler
+// @Summary Registrar rotas GCP
+// @Description Registra as rotas de teste de integração com GCP no router
+// @Tags internal
 func (h *GCPDemoHandler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/api/test/gcp", h.TestIntegration)
 }

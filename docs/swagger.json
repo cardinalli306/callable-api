@@ -5,7 +5,7 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "Uma API robusta construída em Go usando o framework Gin, oferecendo endpoints para gerenciamento de dados com validação completa.",
+        "description": "Uma API robusta construída em Go usando o framework Gin, oferecendo endpoints para gerenciamento de dados com validação completa e autenticação JWT.",
         "title": "Callable API",
         "contact": {
             "name": "Desenvolvedor",
@@ -17,77 +17,341 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/data": {
+        "/api/test/gcp": {
+            "get": {
+                "description": "Testa a integração com vários serviços Google Cloud Platform (Logging, Secret Manager e Storage)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "gcp"
+                ],
+                "summary": "Teste de integração GCP",
+                "responses": {
+                    "200": {
+                        "description": "Resultado dos testes de integração",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Erro de serviços não disponíveis",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Autentica o usuário e retorna os tokens JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login de usuário",
+                "parameters": [
+                    {
+                        "description": "Credenciais de login",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TokenPair"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/profile": {
             "get": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Returns a paginated list of available items",
+                "description": "Retorna os dados do perfil do usuário autenticado",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "items"
+                    "auth"
                 ],
-                "summary": "Get data list",
+                "summary": "Perfil do usuário",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Atualiza os dados do perfil do usuário autenticado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Atualizar perfil",
                 "parameters": [
                     {
-                        "minimum": 1,
+                        "description": "Dados para atualização do perfil",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Renova os tokens JWT usando um token de atualização",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Atualizar tokens",
+                "parameters": [
+                    {
+                        "description": "Token de atualização",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TokenPair"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "description": "Cria uma nova conta de usuário no sistema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Registrar um novo usuário",
+                "parameters": [
+                    {
+                        "description": "Dados de registro",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RegisterUserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/data": {
+            "get": {
+                "description": "Retorna uma lista paginada de itens",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "data"
+                ],
+                "summary": "Listar dados",
+                "parameters": [
+                    {
                         "type": "integer",
-                        "default": 1,
-                        "description": "Page number",
+                        "description": "Número da página (default: 1)",
                         "name": "page",
                         "in": "query"
                     },
                     {
-                        "maximum": 100,
                         "type": "integer",
-                        "default": 10,
-                        "description": "Items per page",
+                        "description": "Itens por página (default: 10, max: 100)",
                         "name": "limit",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Data retrieved successfully",
+                        "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/models.ListResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.Item"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "400": {
-                        "description": "Invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     }
                 }
@@ -98,7 +362,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "Add a new item based on provided data",
+                "description": "Cria um novo item de dados",
                 "consumes": [
                     "application/json"
                 ],
@@ -106,13 +370,13 @@
                     "application/json"
                 ],
                 "tags": [
-                    "items"
+                    "data"
                 ],
-                "summary": "Create new item",
+                "summary": "Criar novo item",
                 "parameters": [
                     {
-                        "description": "Item data",
-                        "name": "data",
+                        "description": "Dados do item",
+                        "name": "item",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -122,39 +386,27 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "Item created",
+                        "description": "Created",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/models.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Item"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "400": {
-                        "description": "Invalid input data",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     }
                 }
@@ -162,24 +414,18 @@
         },
         "/api/v1/data/{id}": {
             "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Returns a specific item based on provided ID",
+                "description": "Retorna um item específico pelo ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "items"
+                    "data"
                 ],
-                "summary": "Get item by ID",
+                "summary": "Obter dados por ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "format": "uuid",
-                        "description": "Item ID",
+                        "description": "ID do item",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -187,45 +433,27 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Item found",
+                        "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/models.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Item"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "400": {
-                        "description": "Invalid ID format",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     },
                     "404": {
-                        "description": "Item not found",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "$ref": "#/definitions/models.APIError"
                         }
                     }
                 }
@@ -233,19 +461,22 @@
         },
         "/health": {
             "get": {
-                "description": "Returns a 200 status if the API is running",
+                "description": "Retorna o status atual da API",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "health"
+                    "system"
                 ],
-                "summary": "Check API status",
+                "summary": "Verificar status da API",
                 "responses": {
                     "200": {
-                        "description": "API is running",
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.Response"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -253,6 +484,30 @@
         }
     },
     "definitions": {
+        "models.APIError": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "description": "Technical details (optional)",
+                    "type": "string"
+                },
+                "field_errors": {
+                    "description": "Validation field errors",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "description": "User-friendly message",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Always \"error\"",
+                    "type": "string"
+                }
+            }
+        },
         "models.InputData": {
             "type": "object",
             "required": [
@@ -286,58 +541,38 @@
                 }
             }
         },
-        "models.Item": {
+        "models.LoginInput": {
             "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
             "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2023-05-22T14:56:32Z"
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Detailed item description"
-                },
                 "email": {
-                    "type": "string",
-                    "example": "user@example.com"
+                    "type": "string"
                 },
-                "id": {
-                    "type": "string",
-                    "example": "5f8d0e6e-6c0a-4f0a-8e0a-6c0a4f0a8e0a"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Item Name"
-                },
-                "value": {
-                    "type": "string",
-                    "example": "ABC123"
+                "password": {
+                    "type": "string"
                 }
             }
         },
-        "models.ListResponse": {
+        "models.RegisterUserInput": {
             "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
             "properties": {
-                "data": {},
-                "message": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
                     "type": "string",
-                    "example": "Data retrieved successfully"
-                },
-                "page": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "page_size": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                },
-                "total_rows": {
-                    "type": "integer",
-                    "example": 42
+                    "minLength": 6
                 }
             }
         },
@@ -352,6 +587,37 @@
                 "status": {
                     "type": "string",
                     "example": "success"
+                }
+            }
+        },
+        "models.TokenPair": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
                 }
             }
         }
