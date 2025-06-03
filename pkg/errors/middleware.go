@@ -79,21 +79,48 @@ func ErrorMiddleware() gin.HandlerFunc {
 
 // HandleErrors é um helper para manipular erros em handlers
 func HandleErrors(c *gin.Context, err error) {
-	if err == nil {
-		return
-	}
+    if err == nil {
+        return
+    }
 
-	// Se já é um AppError ou ValidationError, usa diretamente
-	if _, ok := err.(*AppError); ok {
-		c.Error(err)
-		return
-	}
+    // Se já é um AppError
+    if appError, ok := err.(*AppError); ok {
+        apiError := appError.ToAPIError()
+        
+        logger.Error("Request error", map[string]interface{}{
+            "error":   appError.Error(),
+            "type":    appError.Type,
+            "status":  appError.StatusCode,
+            "details": appError.Details,
+        })
+        
+        c.JSON(appError.StatusCode, apiError)
+        c.Abort() // Adicionar esta linha
+        return
+    }
 
-	if _, ok := err.(*ValidationError); ok {
-		c.Error(err)
-		return
-	}
+    // Se é ValidationError
+    if validationErr, ok := err.(*ValidationError); ok {
+        apiError := validationErr.ToAPIError()
+        
+        logger.Error("Validation error", map[string]interface{}{
+            "error":  validationErr.Error(),
+            "type":   validationErr.Type,
+            "fields": validationErr.FieldErrors,
+        })
+        
+        c.JSON(validationErr.StatusCode, apiError)
+        c.Abort() // Adicionar esta linha
+        return
+    }
 
-	// Caso contrário, cria um erro interno
-	c.Error(NewInternalServerError("Erro interno ao processar requisição", err))
+    // Erro genérico
+    appError := NewInternalServerError("Erro interno ao processar requisição", err)
+    logger.Error("Unexpected error", map[string]interface{}{
+        "error": err.Error(),
+        "stack": appError.Stack,
+    })
+    
+    c.JSON(http.StatusInternalServerError, appError.ToAPIError())
+    c.Abort() // Adicionar esta linha
 }
