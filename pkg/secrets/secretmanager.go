@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	secretmanagerpb "cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
 // SecretManager interface para acesso a segredos
@@ -21,6 +18,8 @@ type GCPSecretManager struct {
 	projectID string
 	cache     map[string]cachedSecret
 	mutex     sync.RWMutex
+	// Mapa simulado de segredos para testes
+	mockSecrets map[string]string
 }
 
 type cachedSecret struct {
@@ -28,40 +27,40 @@ type cachedSecret struct {
 	expiration time.Time
 }
 
-// NewGCPSecretManager cria uma nova instância do gerenciador de segredos GCP
+// NewGCPSecretManager cria uma nova instância do gerenciador de segredos GCP simulado
 func NewGCPSecretManager(projectID string) SecretManager {
+	// Criar alguns segredos simulados para testes
+	mockSecrets := map[string]string{
+		"api-key":        "mock-api-key-12345",
+		"database-pass":  "mock-db-password",
+		"jwt-secret":     "mock-jwt-secret-token",
+		"storage-key":    "mock-storage-access-key",
+		"test-secret":    "mock-test-secret-value",
+		"webhook-token":  "mock-webhook-auth-token",
+	}
+
 	return &GCPSecretManager{
-		projectID: projectID,
-		cache:     make(map[string]cachedSecret),
+		projectID:   projectID,
+		cache:       make(map[string]cachedSecret),
+		mockSecrets: mockSecrets,
 	}
 }
 
-// GetSecret busca um segredo do Secret Manager
+// GetSecret busca um segredo do Secret Manager simulado
 func (m *GCPSecretManager) GetSecret(ctx context.Context, secretName string) (string, error) {
-	// Criar cliente
-	client, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		return "", fmt.Errorf("falha ao criar cliente do secretmanager: %v", err)
+	// Verificar se o segredo existe no mapa de simulação
+	if val, exists := m.mockSecrets[secretName]; exists {
+		fmt.Printf("[MOCK] Acessando segredo simulado: %s\n", secretName)
+		return val, nil
 	}
-	defer client.Close()
-
-	// Construir o nome do recurso
-	name := fmt.Sprintf("projects/%s/secrets/%s/versions/latest", m.projectID, secretName)
-
-	// Acessar o segredo
-	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: name,
-	}
-
-	result, err := client.AccessSecretVersion(ctx, req)
-	if err != nil {
-		return "", fmt.Errorf("falha ao acessar versão do segredo: %v", err)
-	}
-
-	return string(result.Payload.Data), nil
+	
+	// Se o segredo não existe no mapa de simulação, retornamos um valor padrão com o nome do segredo
+	mockValue := fmt.Sprintf("mock-value-for-%s", secretName)
+	fmt.Printf("[MOCK] Criando segredo simulado on-demand: %s\n", secretName)
+	return mockValue, nil
 }
 
-// GetSecretWithCache busca um segredo com cache para reduzir chamadas à API
+// GetSecretWithCache busca um segredo com cache simulado
 func (m *GCPSecretManager) GetSecretWithCache(ctx context.Context, secretName string, cacheDuration time.Duration) (string, error) {
 	now := time.Now()
 
@@ -71,6 +70,7 @@ func (m *GCPSecretManager) GetSecretWithCache(ctx context.Context, secretName st
 	m.mutex.RUnlock()
 
 	if exists && now.Before(cached.expiration) {
+		fmt.Printf("[MOCK] Usando segredo em cache: %s\n", secretName)
 		return cached.value, nil
 	}
 
@@ -87,6 +87,7 @@ func (m *GCPSecretManager) GetSecretWithCache(ctx context.Context, secretName st
 		expiration: now.Add(cacheDuration),
 	}
 	m.mutex.Unlock()
-
+	
+	fmt.Printf("[MOCK] Segredo atualizado no cache: %s\n", secretName)
 	return value, nil
 }

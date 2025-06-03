@@ -2,12 +2,10 @@ package logger
 
 import (
 	"context"
-	"fmt"
+	
 	"log"
 	"os"
 	"time"
-
-	"cloud.google.com/go/logging"
 )
 
 // Níveis de log
@@ -31,33 +29,20 @@ type Logger interface {
 
 // GCPLogger implementa Logger para Cloud Logging
 type GCPLogger struct {
-	client *logging.Client
-	logger *logging.Logger
-	useGCP bool
 	stdLog *log.Logger
+	// Campos simulados - não são usados realmente
+	mockProjectID string
+	mockLogName   string
 }
 
-// NewGCPLogger cria uma nova instância de logger
+// NewGCPLogger cria uma nova instância de logger simulado
 func NewGCPLogger(ctx context.Context, projectID, logName string, useGCP bool) (Logger, error) {
 	stdLog := log.New(os.Stdout, "", log.LstdFlags)
 
-	if !useGCP || projectID == "" {
-		return &GCPLogger{
-			useGCP: false,
-			stdLog: stdLog,
-		}, nil
-	}
-
-	client, err := logging.NewClient(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao criar cliente de logging: %v", err)
-	}
-
 	return &GCPLogger{
-		client: client,
-		logger: client.Logger(logName),
-		useGCP: true,
-		stdLog: stdLog,
+		stdLog:        stdLog,
+		mockProjectID: projectID,
+		mockLogName:   logName,
 	}, nil
 }
 
@@ -66,6 +51,8 @@ func (l *GCPLogger) createEntry(msg string, fields ...map[string]interface{}) ma
 	entry := map[string]interface{}{
 		"message":   msg,
 		"timestamp": time.Now().Format(time.RFC3339),
+		"project":   l.mockProjectID, // adicionado para simular integração GCP
+		"log_name":  l.mockLogName,   // adicionado para simular integração GCP
 	}
 
 	if len(fields) > 0 {
@@ -90,75 +77,31 @@ func (l *GCPLogger) logToStdout(level, msg string, err error, fields ...map[stri
 // Debug registra mensagem de nível debug
 func (l *GCPLogger) Debug(msg string, fields ...map[string]interface{}) {
 	l.logToStdout(LogLevelDEBUG, msg, nil, fields...)
-
-	if l.useGCP {
-		l.logger.Log(logging.Entry{
-			Severity: logging.Debug,
-			Payload:  l.createEntry(msg, fields...),
-		})
-	}
 }
 
 // Info registra mensagem de nível info
 func (l *GCPLogger) Info(msg string, fields ...map[string]interface{}) {
 	l.logToStdout(LogLevelINFO, msg, nil, fields...)
-
-	if l.useGCP {
-		l.logger.Log(logging.Entry{
-			Severity: logging.Info,
-			Payload:  l.createEntry(msg, fields...),
-		})
-	}
 }
 
 // Warn registra mensagem de nível warning
 func (l *GCPLogger) Warn(msg string, fields ...map[string]interface{}) {
 	l.logToStdout(LogLevelWARN, msg, nil, fields...)
-
-	if l.useGCP {
-		l.logger.Log(logging.Entry{
-			Severity: logging.Warning,
-			Payload:  l.createEntry(msg, fields...),
-		})
-	}
 }
 
 // Error registra mensagem de nível erro
 func (l *GCPLogger) Error(msg string, err error, fields ...map[string]interface{}) {
 	l.logToStdout(LogLevelERROR, msg, err, fields...)
-
-	if l.useGCP && err != nil {
-		payload := l.createEntry(msg, fields...)
-		payload["error"] = err.Error()
-
-		l.logger.Log(logging.Entry{
-			Severity: logging.Error,
-			Payload:  payload,
-		})
-	}
 }
 
 // Fatal registra mensagem de nível fatal
 func (l *GCPLogger) Fatal(msg string, err error, fields ...map[string]interface{}) {
 	l.logToStdout(LogLevelFATAL, msg, err, fields...)
-
-	if l.useGCP && err != nil {
-		payload := l.createEntry(msg, fields...)
-		payload["error"] = err.Error()
-
-		l.logger.Log(logging.Entry{
-			Severity: logging.Critical,
-			Payload:  payload,
-		})
-	}
-
 	os.Exit(1)
 }
 
-// Close fecha o cliente de logging
+// Close simula o fechamento do cliente de logging
 func (l *GCPLogger) Close() error {
-	if l.useGCP {
-		return l.client.Close()
-	}
+	l.stdLog.Printf("[INFO] GCP Logger mock fechado com sucesso")
 	return nil
 }

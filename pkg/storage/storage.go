@@ -4,146 +4,112 @@ import (
 	"context"
 	"fmt"
 	"io"
+	
+	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
-	"google.golang.org/api/iterator"
 )
 
-// CloudStorage gerencia operações no Cloud Storage
+// CloudStorage representa uma interface com o Cloud Storage do GCP
 type CloudStorage struct {
 	bucketName string
+	// Mapas para simulação
+	mockFiles  map[string][]byte
 }
 
-// NewCloudStorage cria uma nova instância do gerenciador de armazenamento
+// NewCloudStorage cria uma nova instância de CloudStorage
 func NewCloudStorage(bucketName string) *CloudStorage {
 	return &CloudStorage{
 		bucketName: bucketName,
+		mockFiles:  make(map[string][]byte),
 	}
 }
 
-// GetClient retorna um novo cliente de armazenamento GCP
-func (s *CloudStorage) GetClient(ctx context.Context) (*storage.Client, error) {
-	client, err := storage.NewClient(ctx)
+// GetClient retorna um cliente simulado de Cloud Storage
+func (cs *CloudStorage) GetClient(ctx context.Context) (*storage.Client, error) {
+	// Simular criação de cliente bem-sucedida
+	fmt.Printf("[MOCK] Cloud Storage client criado para bucket: %s\n", cs.bucketName)
+	return &storage.Client{}, nil
+}
+
+// UploadFile simula o upload de um arquivo para o Cloud Storage
+func (cs *CloudStorage) UploadFile(ctx context.Context, objectName string, file io.Reader) error {
+	// Ler conteúdo do arquivo
+	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("falha ao criar cliente: %v", err)
+		return err
 	}
-	return client, nil
-}
-
-// GetBucketName retorna o nome do bucket configurado
-func (s *CloudStorage) GetBucketName() string {
-	return s.bucketName
-}
-
-// UploadFile faz upload de um arquivo para o Cloud Storage
-func (s *CloudStorage) UploadFile(ctx context.Context, objectName string, data io.Reader) error {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("falha ao criar cliente: %v", err)
-	}
-	defer client.Close()
-
-	bucket := client.Bucket(s.bucketName)
-	obj := bucket.Object(objectName)
-	wc := obj.NewWriter(ctx)
-
-	if _, err = io.Copy(wc, data); err != nil {
-		return fmt.Errorf("erro na cópia dos dados: %v", err)
-	}
-
-	if err := wc.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar writer: %v", err)
-	}
-
+	
+	// Armazenar no mapa de simulação
+	cs.mockFiles[objectName] = data
+	fmt.Printf("[MOCK] Arquivo simulado upload: %s (tamanho: %d bytes)\n", objectName, len(data))
 	return nil
 }
 
-// DownloadFile baixa um arquivo do Cloud Storage
-func (s *CloudStorage) DownloadFile(ctx context.Context, objectName string) ([]byte, error) {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao criar cliente: %v", err)
+// DownloadFile simula o download de um arquivo do Cloud Storage
+func (cs *CloudStorage) DownloadFile(ctx context.Context, objectName string) ([]byte, error) {
+	// Verificar se o arquivo existe no mapa de simulação
+	if data, exists := cs.mockFiles[objectName]; exists {
+		fmt.Printf("[MOCK] Arquivo simulado download: %s\n", objectName)
+		return data, nil
 	}
-	defer client.Close()
-
-	bucket := client.Bucket(s.bucketName)
-	obj := bucket.Object(objectName)
-
-	r, err := obj.NewReader(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("erro ao criar reader: %v", err)
-	}
-	defer r.Close()
-
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("erro ao ler dados: %v", err)
-	}
-
-	return data, nil
+	
+	// Se não existir, criar dados simulados
+	mockData := []byte(fmt.Sprintf("Conteúdo simulado para %s criado em %s", 
+		objectName, time.Now().Format(time.RFC3339)))
+	cs.mockFiles[objectName] = mockData
+	fmt.Printf("[MOCK] Arquivo simulado criado on-demand: %s\n", objectName)
+	return mockData, nil
 }
 
-// ListFiles lista arquivos em um diretório do bucket
-func (s *CloudStorage) ListFiles(ctx context.Context, prefix string) ([]string, error) {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao criar cliente: %v", err)
+// DeleteFile simula a exclusão de um arquivo do Cloud Storage
+func (cs *CloudStorage) DeleteFile(ctx context.Context, objectName string) error {
+	// Verificar se o arquivo existe no mapa de simulação
+	if _, exists := cs.mockFiles[objectName]; exists {
+		delete(cs.mockFiles, objectName)
+		fmt.Printf("[MOCK] Arquivo simulado excluído: %s\n", objectName)
+		return nil
 	}
-	defer client.Close()
+	
+	fmt.Printf("[MOCK] Tentativa de exclusão de arquivo inexistente: %s\n", objectName)
+	return nil // Não retornamos erro para simular sucesso
+}
 
-	bucket := client.Bucket(s.bucketName)
-	var objects []string
-
-	it := bucket.Objects(ctx, &storage.Query{Prefix: prefix})
-	for {
-		attrs, err := it.Next()
-		if err == iterator.Done {
-			break
+// ListFiles simula a listagem de arquivos em um diretório do Cloud Storage
+func (cs *CloudStorage) ListFiles(ctx context.Context, prefix string) ([]string, error) {
+	var files []string
+	
+	// Iterar sobre os arquivos simulados
+	for key := range cs.mockFiles {
+		if strings.HasPrefix(key, prefix) {
+			files = append(files, key)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("erro ao listar objetos: %v", err)
+	}
+	
+	// Se não houver arquivos com esse prefixo, criar alguns para teste
+	if len(files) == 0 {
+		mockPaths := []string{
+			fmt.Sprintf("%sfile1.txt", prefix),
+			fmt.Sprintf("%sfile2.pdf", prefix),
+			fmt.Sprintf("%ssubdir/file3.json", prefix),
 		}
-		objects = append(objects, attrs.Name)
+		
+		for _, path := range mockPaths {
+			cs.mockFiles[path] = []byte(fmt.Sprintf("Conteúdo simulado para %s", path))
+			files = append(files, path)
+		}
 	}
-
-	return objects, nil
+	
+	fmt.Printf("[MOCK] Arquivos listados com prefixo '%s': %d arquivos\n", prefix, len(files))
+	return files, nil
 }
 
-// DeleteFile deleta um arquivo do Cloud Storage
-func (s *CloudStorage) DeleteFile(ctx context.Context, objectName string) error {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("falha ao criar cliente: %v", err)
-	}
-	defer client.Close()
-
-	bucket := client.Bucket(s.bucketName)
-	obj := bucket.Object(objectName)
-
-	if err := obj.Delete(ctx); err != nil {
-		return fmt.Errorf("erro ao deletar objeto: %v", err)
-	}
-
-	return nil
-}
-
-// GetSignedURL gera uma URL assinada para acesso temporário a um objeto
-func (s *CloudStorage) GetSignedURL(ctx context.Context, objectName string, expires time.Duration) (string, error) {
-	opts := &storage.SignedURLOptions{
-		Scheme:  storage.SigningSchemeV4,
-		Method:  "GET",
-		Expires: time.Now().Add(expires),
-		// Removi os campos Bucket e Object que estavam causando o erro
-		// Nota: Dependendo do seu ambiente, você pode precisar configurar as credenciais:
-		// GoogleAccessID: "seu-service-account-email@projeto.iam.gserviceaccount.com",
-		// PrivateKey:     []byte("sua-chave-privada"),
-	}
-
-	url, err := storage.SignedURL(s.bucketName, objectName, opts)
-	if err != nil {
-		return "", fmt.Errorf("erro ao gerar URL assinada: %v", err)
-	}
-
-	return url, nil
+// GetSignedURL simula a geração de uma URL assinada para um objeto
+func (cs *CloudStorage) GetSignedURL(ctx context.Context, objectName string, expiration time.Duration) (string, error) {
+	mockURL := fmt.Sprintf("https://storage.googleapis.com/%s/%s?mock-signed=true&expires=%d", 
+		cs.bucketName, objectName, time.Now().Add(expiration).Unix())
+	
+	fmt.Printf("[MOCK] URL assinada simulada gerada para: %s\n", objectName)
+	return mockURL, nil
 }

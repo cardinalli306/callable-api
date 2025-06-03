@@ -22,7 +22,7 @@ import (
 	"callable-api/pkg/errors"
 	"callable-api/pkg/logger"
 
-	// Importações novas para GCP
+	// Importações para GCP
 	gcplogger "callable-api/pkg/logger" // Renomeando para evitar conflito
 	"callable-api/pkg/secrets"
 	mystorage "callable-api/pkg/storage"
@@ -58,44 +58,40 @@ func SetupEnv(cfg *config.Config) {
 	}
 }
 
-// SetupGCPServices configura e inicializa os serviços do GCP
+// Modificação apenas para a parte relevante do arquivo main.go
+// Particularmente a função SetupGCPServices
+
+// SetupGCPServices configura e inicializa os serviços simulados do GCP
 func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManager, *mystorage.CloudStorage) {
 	ctx := context.Background()
 
-	// Inicializar o logger com suporte a GCP
-	log, err := gcplogger.NewGCPLogger(ctx, cfg.GCPProjectID, cfg.LoggingName, cfg.UseCloudLogging)
+	// Inicializar o logger com suporte a GCP simulado
+	log, err := gcplogger.NewGCPLogger(ctx, cfg.GCPProjectID, cfg.LoggingName, true)
 	if err != nil {
-		logger.Error("Erro ao inicializar logger GCP", map[string]interface{}{
+		logger.Error("Erro ao inicializar mock do logger GCP", map[string]interface{}{
 			"error": err.Error(),
 		})
 		// Continuar com o logger padrão em caso de erro
 	} else {
-		logger.Info("GCP Logger inicializado com sucesso", map[string]interface{}{
-			"useCloudLogging": cfg.UseCloudLogging,
+		logger.Info("Mock do GCP Logger inicializado com sucesso", map[string]interface{}{
+			"useCloudLogging": true,
+			"mockEnabled": true,
 		})
 	}
 
-	// Inicializar Secret Manager se GCP estiver configurado
-	var secretManager secrets.SecretManager
-	if cfg.GCPProjectID != "" && cfg.UseSecretManager {
-		secretManager = secrets.NewGCPSecretManager(cfg.GCPProjectID)
-		logger.Info("Secret Manager inicializado", map[string]interface{}{
-			"project_id": cfg.GCPProjectID,
-		})
-	} else {
-		logger.Info("Secret Manager não configurado, usando valores locais", nil)
-	}
+	// Inicializar Secret Manager simulado
+	secretManager := secrets.NewGCPSecretManager(cfg.GCPProjectID)
+	logger.Info("Mock do Secret Manager inicializado", map[string]interface{}{
+		"project_id": cfg.GCPProjectID,
+		"mockEnabled": true,
+	})
 
-	// Inicializar Cloud Storage se bucket estiver configurado
-	var cloudStorage *mystorage.CloudStorage
-	if cfg.GCPStorageBucket != "" {
-		cloudStorage = mystorage.NewCloudStorage(cfg.GCPStorageBucket)
-		logger.Info("Cloud Storage inicializado", map[string]interface{}{
-			"bucket": cfg.GCPStorageBucket,
-		})
-	} else {
-		logger.Info("Cloud Storage não configurado", nil)
-	}
+	// Inicializar Cloud Storage simulado
+	cloudStorage := mystorage.NewCloudStorage(cfg.GCPStorageBucket)
+	logger.Info("Mock do Cloud Storage inicializado", map[string]interface{}{
+		"bucket": cfg.GCPStorageBucket,
+		"mockEnabled": true,
+	})
 
 	return log, secretManager, cloudStorage
 }
@@ -123,7 +119,13 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	authHandler := handlers.NewAuthHandler(authService)
 
 	// Criar handler de demonstração do GCP (se configurado)
-	gcpDemoHandler := handlers.NewGCPDemoHandler(cfg, gcpLog, secretMgr, storageClient)
+	var gcpDemoHandler *handlers.GCPDemoHandler
+	if cfg.GCPProjectID != "" {
+		gcpDemoHandler = handlers.NewGCPDemoHandler(cfg, gcpLog, secretMgr, storageClient)
+		logger.Info("GCP Demo Handler inicializado", nil)
+	} else {
+		logger.Info("GCP Demo Handler não inicializado - GCP não configurado", nil)
+	}
 
 	// Health check route
 	// @Summary Verificar status da API
@@ -134,7 +136,27 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	// @Router /health [get]
 	router.GET("/health", handlers.HealthCheck)
 
-	// Rota para testar integração GCP
+	// Rota para testar integração GCP (endpoint original da documentação Swagger)
+	// @Summary Teste de integração GCP
+	// @Description Testa a integração com serviços Google Cloud Platform
+	// @Tags gcp
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Failure 503 {object} map[string]interface{}
+	// @Router /api/test/gcp [get]
+	router.GET("/api/test/gcp", func(c *gin.Context) {
+		logger.Info("Endpoint /api/test/gcp chamado", nil)
+		if gcpDemoHandler != nil {
+			gcpDemoHandler.TestIntegration(c)
+		} else {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":  "error",
+				"message": "GCP integration not configured",
+			})
+		}
+	})
+
+	// Rota para testar integração GCP (endpoint alternativo)
 	// @Summary Teste de integração GCP (Alternativo)
 	// @Description Testa a integração com serviços Google Cloud Platform através do endpoint alternativo
 	// @Tags gcp
@@ -143,6 +165,7 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	// @Failure 503 {object} map[string]interface{}
 	// @Router /api/test-gcp-integration [get]
 	router.GET("/api/test-gcp-integration", func(c *gin.Context) {
+		logger.Info("Endpoint /api/test-gcp-integration chamado", nil)
 		if gcpDemoHandler != nil {
 			gcpDemoHandler.TestIntegration(c)
 		} else {
