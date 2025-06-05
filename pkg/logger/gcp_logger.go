@@ -64,14 +64,19 @@ func (l *GCPLogger) createEntry(msg string, fields ...map[string]interface{}) ma
 	return entry
 }
 
-// logToStdout envia log para stdout
+// logToStdout envia log para stdout - VERSÃO OTIMIZADA
 func (l *GCPLogger) logToStdout(level, msg string, err error, fields ...map[string]interface{}) {
-	entry := l.createEntry(msg, fields...)
-	if err != nil {
-		entry["error"] = err.Error()
-	}
-
-	l.stdLog.Printf("[%s] %+v", level, entry)
+    // Versão simplificada que não formata campos detalhados
+    if err != nil {
+        l.stdLog.Printf("[%s] %s: %v", level, msg, err)
+    } else {
+        l.stdLog.Printf("[%s] %s", level, msg)
+    }
+    
+    // Adicione isso apenas se precisar ver os campos durante depuração
+    // if len(fields) > 0 && fields[0] != nil {
+    //     l.stdLog.Printf("[%s] Fields: %v", level, fields[0])
+    // }
 }
 
 // Debug registra mensagem de nível debug

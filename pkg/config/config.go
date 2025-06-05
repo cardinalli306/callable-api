@@ -77,16 +77,18 @@ func Load() *Config {
 	cfg.LoggingName = getEnv("LOGGING_NAME", "api-service")
 
 	// Novas configurações
-	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
+	cfg.LogLevel = getEnv("LOG_LEVEL", "debug") // Alterado de "info" para "debug" para mais detalhes nos logs
+
 	cfg.Port = getEnv("PORT", "8080")
 
-	readTimeout, _ := strconv.Atoi(getEnv("READ_TIMEOUT_SECS", "10"))
+	// Aumentando os timeouts
+	readTimeout, _ := strconv.Atoi(getEnv("READ_TIMEOUT_SECS", "60"))  // 60 segundos
 	cfg.ReadTimeoutSecs = readTimeout
 
-	writeTimeout, _ := strconv.Atoi(getEnv("WRITE_TIMEOUT_SECS", "10"))
+	writeTimeout, _ := strconv.Atoi(getEnv("WRITE_TIMEOUT_SECS", "60")) // 60 segundos
 	cfg.WriteTimeoutSecs = writeTimeout
 
-	gracefulTimeout, _ := strconv.Atoi(getEnv("GRACEFUL_TIMEOUT_SECS", "15"))
+	gracefulTimeout, _ := strconv.Atoi(getEnv("GRACEFUL_TIMEOUT_SECS", "30")) // Aumentado de 15 para 30 segundos
 	cfg.GracefulTimeoutSecs = gracefulTimeout
 
 	jwtExpirationMinutes, _ := strconv.Atoi(getEnv("JWT_EXPIRATION_MINUTES", "720"))

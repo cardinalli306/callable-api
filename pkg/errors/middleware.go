@@ -83,7 +83,7 @@ func HandleErrors(c *gin.Context, err error) {
         return
     }
 
-    // Se já é um AppError
+    // Se for um erro de App
     if appError, ok := err.(*AppError); ok {
         apiError := appError.ToAPIError()
         
@@ -94,12 +94,12 @@ func HandleErrors(c *gin.Context, err error) {
             "details": appError.Details,
         })
         
-        c.JSON(appError.StatusCode, apiError)
-        c.Abort() // Adicionar esta linha
+        // Usar AbortWithStatusJSON ao invés de JSON+Abort
+        c.AbortWithStatusJSON(appError.StatusCode, apiError)
         return
     }
 
-    // Se é ValidationError
+    // Se for um erro de validação
     if validationErr, ok := err.(*ValidationError); ok {
         apiError := validationErr.ToAPIError()
         
@@ -109,8 +109,8 @@ func HandleErrors(c *gin.Context, err error) {
             "fields": validationErr.FieldErrors,
         })
         
-        c.JSON(validationErr.StatusCode, apiError)
-        c.Abort() // Adicionar esta linha
+        // Usar AbortWithStatusJSON ao invés de JSON+Abort
+        c.AbortWithStatusJSON(validationErr.StatusCode, apiError)
         return
     }
 
@@ -121,6 +121,6 @@ func HandleErrors(c *gin.Context, err error) {
         "stack": appError.Stack,
     })
     
-    c.JSON(http.StatusInternalServerError, appError.ToAPIError())
-    c.Abort() // Adicionar esta linha
+    // Usar AbortWithStatusJSON ao invés de JSON+Abort
+    c.AbortWithStatusJSON(http.StatusInternalServerError, appError.ToAPIError())
 }

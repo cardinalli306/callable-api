@@ -14,6 +14,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "callable-api/docs" // Para geração de documentação Swagger
+	"callable-api/internal/background"
 	"callable-api/internal/handlers"
 	"callable-api/internal/middleware"
 	"callable-api/internal/repository"
@@ -47,7 +48,10 @@ func SetupEnv(cfg *config.Config) {
 	// Configure logger
 	logger.SetLevel(cfg.LogLevel)
 	logger.Info("Starting API", map[string]interface{}{
-		"port": cfg.Port,
+		"port":           cfg.Port,
+		"readTimeout":    cfg.ReadTimeoutSecs,
+		"writeTimeout":   cfg.WriteTimeoutSecs,
+		"logLevel":       cfg.LogLevel,
 	})
 
 	// Set Gin mode based on log level
@@ -57,9 +61,6 @@ func SetupEnv(cfg *config.Config) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 }
-
-// Modificação apenas para a parte relevante do arquivo main.go
-// Particularmente a função SetupGCPServices
 
 // SetupGCPServices configura e inicializa os serviços simulados do GCP
 func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManager, *mystorage.CloudStorage) {
@@ -75,21 +76,21 @@ func SetupGCPServices(cfg *config.Config) (gcplogger.Logger, secrets.SecretManag
 	} else {
 		logger.Info("Mock do GCP Logger inicializado com sucesso", map[string]interface{}{
 			"useCloudLogging": true,
-			"mockEnabled": true,
+			"mockEnabled":     true,
 		})
 	}
 
 	// Inicializar Secret Manager simulado
 	secretManager := secrets.NewGCPSecretManager(cfg.GCPProjectID)
 	logger.Info("Mock do Secret Manager inicializado", map[string]interface{}{
-		"project_id": cfg.GCPProjectID,
+		"project_id":  cfg.GCPProjectID,
 		"mockEnabled": true,
 	})
 
 	// Inicializar Cloud Storage simulado
 	cloudStorage := mystorage.NewCloudStorage(cfg.GCPStorageBucket)
 	logger.Info("Mock do Cloud Storage inicializado", map[string]interface{}{
-		"bucket": cfg.GCPStorageBucket,
+		"bucket":      cfg.GCPStorageBucket,
 		"mockEnabled": true,
 	})
 
@@ -101,10 +102,11 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	// Initialize Gin router
 	router := gin.New()
 
-	// Adicionar middlewares
-	router.Use(errors.RecoveryMiddleware()) // Primeiro o recovery
-	router.Use(errors.ErrorMiddleware())    // Depois o tratamento de erros
-	router.Use(middleware.RequestLogger())  // Por último o logger
+	// Adicionando middleware CORS primeiro
+	router.Use(middleware.CORSMiddleware())    // CORS deve ser o primeiro middleware
+	router.Use(errors.RecoveryMiddleware())    // Recovery middleware
+	router.Use(errors.ErrorMiddleware())       // Middleware de tratamento de erros
+	router.Use(middleware.RequestLogger())     // Logger middleware - Habilitado para debug
 
 	// Criar as instâncias dos repositórios
 	itemRepo := repository.NewInMemoryItemRepository()
@@ -115,7 +117,14 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 	authService := service.NewAuthService(userRepo, cfg)
 
 	// Criar as instâncias dos handlers
-	itemHandler := handlers.NewItemHandler(itemService)
+	// Criar um JobManager
+	jobManager := background.NewJobManager() // Você precisa importar o pacote background
+
+	// Definir um timeout para o handler (por exemplo, 30 segundos)
+	handlerTimeout := 300 * time.Second
+
+	// Passar todos os parâmetros necessários
+	itemHandler := handlers.NewItemHandler(itemService, jobManager, handlerTimeout)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	// Criar handler de demonstração do GCP (se configurado)
@@ -183,6 +192,12 @@ func SetupRouter(cfg *config.Config, gcpLog gcplogger.Logger, secretMgr secrets.
 		v1.GET("/data", itemHandler.GetData)
 		v1.GET("/data/:id", itemHandler.GetDataById)
 
+		// Adicionando rota assíncrona para processamento em segundo plano
+		v1.POST("/data/async", itemHandler.PostData)
+        
+        // ADICIONADO: Endpoint para verificar o status de um job
+        v1.GET("/jobs/:id", itemHandler.JobStatus)
+
 		// Rotas de autenticação
 		auth := v1.Group("/auth")
 		{
@@ -229,6 +244,7 @@ func SetupServer(cfg *config.Config, router *gin.Engine) *http.Server {
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.ReadTimeoutSecs) * time.Second,
 		WriteTimeout: time.Duration(cfg.WriteTimeoutSecs) * time.Second,
+		IdleTimeout:  120 * time.Second, // Adicionado timeout de conexão ociosa
 	}
 }
 
@@ -238,6 +254,8 @@ func StartServer(server *http.Server, cfg *config.Config, gcpLog gcplogger.Logge
 	go func() {
 		logger.Info("Server started", map[string]interface{}{
 			"port": cfg.Port,
+			"readTimeout": cfg.ReadTimeoutSecs,
+			"writeTimeout": cfg.WriteTimeoutSecs,
 		})
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Error starting server", map[string]interface{}{

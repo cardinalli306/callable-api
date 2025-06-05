@@ -405,6 +405,69 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.APIError"
                         }
                     },
+                    "408": {
+                        "description": "Request Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/data/async": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Inicia o processamento assíncrono para criar um novo item",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "data"
+                ],
+                "summary": "Criar novo item de forma assíncrona",
+                "parameters": [
+                    {
+                        "description": "Dados do item",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.InputData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -461,6 +524,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/jobs/{id}": {
+            "get": {
+                "description": "Retorna o status atual de um job em execução",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "jobs"
+                ],
+                "summary": "Obter status de um job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do job",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Retorna o status atual da API",
@@ -489,23 +587,31 @@ const docTemplate = `{
         "models.APIError": {
             "type": "object",
             "properties": {
+                "code": {
+                    "description": "Manter como int para compatibilidade",
+                    "type": "integer"
+                },
+                "code_string": {
+                    "description": "Adicionar campo string opcional",
+                    "type": "string"
+                },
                 "details": {
-                    "description": "Technical details (optional)",
                     "type": "string"
                 },
                 "field_errors": {
-                    "description": "Validation field errors",
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
                 },
                 "message": {
-                    "description": "User-friendly message",
                     "type": "string"
                 },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "status": {
-                    "description": "Always \"error\"",
                     "type": "string"
                 }
             }

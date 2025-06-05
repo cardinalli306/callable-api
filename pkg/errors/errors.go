@@ -73,15 +73,16 @@ func (e *ValidationError) AddFieldError(field, message string) *ValidationError 
 
 // ToAPIError sobrescreve o método para incluir erros de campo
 func (e ValidationError) ToAPIError() models.APIError {
-	apiErr := e.AppError.ToAPIError()
-	
-	// Converter erros de campo para o formato esperado pela API
-	fieldErrors := make(map[string]string, len(e.FieldErrors))
-	for _, fieldErr := range e.FieldErrors {
-		fieldErrors[fieldErr.Field] = fieldErr.Message
-	}
-	
-	return apiErr.WithFieldErrors(fieldErrors)
+    apiErr := e.AppError.ToAPIError()
+    
+    // Converter erros de campo para o formato esperado pela API
+    fieldErrors := make(map[string]string, len(e.FieldErrors))
+    for _, fieldErr := range e.FieldErrors {
+        fieldErrors[fieldErr.Field] = fieldErr.Message
+    }
+    
+    // Use * para desreferenciar o ponteiro retornado por WithFieldErrors
+    return *apiErr.WithFieldErrors(fieldErrors)
 }
 
 // captureStack captura a pilha de chamadas para ajudar na depuração

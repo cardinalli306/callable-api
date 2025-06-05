@@ -2,19 +2,24 @@ basePath: /
 definitions:
   models.APIError:
     properties:
+      code:
+        description: Manter como int para compatibilidade
+        type: integer
+      code_string:
+        description: Adicionar campo string opcional
+        type: string
       details:
-        description: Technical details (optional)
         type: string
       field_errors:
         additionalProperties:
           type: string
-        description: Validation field errors
         type: object
       message:
-        description: User-friendly message
         type: string
+      metadata:
+        additionalProperties: true
+        type: object
       status:
-        description: Always "error"
         type: string
     type: object
   models.InputData:
@@ -355,6 +360,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/models.APIError'
+        "408":
+          description: Request Timeout
+          schema:
+            $ref: '#/definitions/models.APIError'
         "500":
           description: Internal Server Error
           schema:
@@ -395,6 +404,65 @@ paths:
       summary: Obter dados por ID
       tags:
       - data
+  /api/v1/data/async:
+    post:
+      consumes:
+      - application/json
+      description: Inicia o processamento assíncrono para criar um novo item
+      parameters:
+      - description: Dados do item
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.InputData'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIError'
+      security:
+      - Bearer: []
+      summary: Criar novo item de forma assíncrona
+      tags:
+      - data
+  /api/v1/jobs/{id}:
+    get:
+      description: Retorna o status atual de um job em execução
+      parameters:
+      - description: ID do job
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIError'
+      summary: Obter status de um job
+      tags:
+      - jobs
   /health:
     get:
       description: Retorna o status atual da API
